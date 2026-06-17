@@ -25,3 +25,4 @@ backend/.coverage
 frontend/coverage
 backend/app/services/openclaw/.device-keys
 .localdb/
+.gstack/
