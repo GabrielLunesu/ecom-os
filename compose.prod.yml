@@ -1,0 +1,64 @@
+# Ecom-OS production overlay — single-origin, always-on, no public ports.
+#
+#   docker compose -f compose.yml -f compose.prod.yml --env-file .env up -d --build
+#   (add `--profile tunnel` to also run the Cloudflare Tunnel)
+#
+# vs the base compose.yml (dev): the app is reached ONLY through the `proxy`
+# (single origin), backend/frontend are not published to the host, everything
+# restarts on failure, and the frontend is built in same-origin mode.
+
+services:
+  db:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  backend:
+    restart: unless-stopped
+    # Internal only — reached via the proxy, never published publicly.
+    ports: !reset []
+
+  frontend:
+    restart: unless-stopped
+    build:
+      args:
+        # Same-origin: the browser calls /api on whatever host serves the app.
+        NEXT_PUBLIC_API_URL: same-origin
+    environment:
+      NEXT_PUBLIC_API_URL: same-origin
+    ports: !reset []
+
+  webhook-worker:
+    restart: unless-stopped
+
+  # Single-origin reverse proxy: / -> frontend, /api + /healthz -> backend.
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    # Bound to loopback only; the public path is cloudflared -> proxy:80.
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-8080}:80"
+
+  # Cloudflare Tunnel: a real HTTPS hostname with NO inbound ports opened on the
+  # VPS. Configure the tunnel's public hostname -> http://proxy:80 in the
+  # Cloudflare dashboard, then set TUNNEL_TOKEN. Enabled with `--profile tunnel`.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - proxy
+    profiles:
+      - tunnel
+
+volumes:
+  caddy_data:

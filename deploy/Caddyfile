@@ -1,0 +1,18 @@
+# Ecom-OS single-origin reverse proxy (production).
+# One host: API + health under /api, /healthz, /docs, /openapi.json -> backend;
+# everything else -> the production Next.js server. No CORS, one origin.
+# TLS is terminated by Cloudflare Tunnel at the edge, so this listens on plain :80
+# and is only reachable through cloudflared.
+
+:80 {
+	encode zstd gzip
+
+	@backend path /api/* /healthz /docs /openapi.json
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
