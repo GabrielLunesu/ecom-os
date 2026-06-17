@@ -7,6 +7,7 @@ import {
   MessageSquare,
   Settings,
   SquareKanban,
+  Workflow,
   type LucideIcon,
 } from "lucide-react";
 
@@ -49,6 +50,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Agents",
     icon: Bot,
     description: "Templates and configuration",
+  },
+  {
+    href: "/flows",
+    label: "Flows",
+    icon: Workflow,
+    description: "Configure CS flows (your SOPs)",
   },
   {
     href: "/cs",

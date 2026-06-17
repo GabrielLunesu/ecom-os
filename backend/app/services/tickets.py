@@ -141,8 +141,54 @@ async def ticket_evidence(session: AsyncSession, ticket_id: UUID) -> list[Ticket
     )
 
 
+async def _open_ticket_for_conversation(session: AsyncSession, conversation_id: str) -> Ticket | None:
+    """Find a non-resolved ticket in the same email conversation, if any."""
+    if not conversation_id:
+        return None
+    return (
+        await session.exec(
+            select(Ticket)
+            .where(Ticket.external_ref == conversation_id, Ticket.status != "resolved")
+            .order_by(Ticket.created_at.desc())  # type: ignore[attr-defined]
+        )
+    ).first()
+
+
+async def append_reply(session: AsyncSession, ticket: Ticket, msg: dict[str, Any]) -> None:
+    """Append a threaded customer reply to an existing ticket.
+
+    Invariant 3 (sticky escalation): a reply to a `needs_rep` ticket appends + notifies
+    and never re-triggers autonomous handling. A reply to an `awaiting_customer` ticket
+    re-activates it so the flow resumes on the next loop pass.
+    """
+    received = _parse_dt(msg.get("received_at", ""))
+    session.add(
+        TicketMessage(
+            ticket_id=ticket.id,
+            direction="inbound",
+            author=msg.get("from_email", ""),
+            body=msg.get("body_text", ""),
+            untrusted=True,  # Invariant 4
+            external_id=msg.get("external_id", ""),
+            created_at=received or utcnow(),
+        )
+    )
+    ticket.last_customer_msg_at = received or utcnow()
+    if ticket.status == "awaiting_customer":
+        ticket.status = "auto_handling"  # resume the flow
+        note = "customer replied; resuming flow"
+    elif ticket.status == "needs_rep":
+        note = "customer replied; rep notified (no auto-handling)"  # Invariant 3
+    else:
+        note = "customer replied"
+    ticket.updated_at = utcnow()
+    session.add(ticket)
+    session.add(TicketAudit(ticket_id=ticket.id, action="customer_reply", actor="system", detail=note))
+    await session.commit()
+
+
 async def ingest_inbox(session: AsyncSession, brand: Brand, *, limit: int = 25) -> list[Ticket]:
-    """Pull unread inbound mail and create tickets for messages not seen before."""
+    """Pull unread inbound mail; thread replies into open tickets, else create new."""
     account_id = await discover_active_mail_account()
     if not account_id:
         return []
@@ -154,6 +200,10 @@ async def ingest_inbox(session: AsyncSession, brand: Brand, *, limit: int = 25) 
         if not _is_support_candidate(msg.get("from_email", "")):
             continue
         if await _seen(session, msg.get("external_id", "")):
+            continue
+        existing = await _open_ticket_for_conversation(session, msg.get("conversation_id", ""))
+        if existing is not None:
+            await append_reply(session, existing, msg)
             continue
         created.append(await create_ticket_from_message(session, brand, msg))
     return created

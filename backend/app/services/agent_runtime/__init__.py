@@ -12,6 +12,7 @@ read+discount ShopifyConnector and the inbox connector — never a refund tool (
 from __future__ import annotations
 
 from .base import AgentRuntime, HandlingResult
+from .flow import FlowCSRuntime
 from .hermes import HermesRuntime
 from .in_app import InAppCSRuntime
 from .llm import LLMCSRuntime
@@ -20,6 +21,7 @@ __all__ = [
     "AgentRuntime",
     "HandlingResult",
     "InAppCSRuntime",
+    "FlowCSRuntime",
     "LLMCSRuntime",
     "HermesRuntime",
 ]

@@ -11,8 +11,10 @@ from app.models.brand import Brand
 from app.models.tickets import TicketMessage
 from app.services import tickets as tickets_svc
 from app.services.connectors.composio_inbox import normalize_message
+from app.models.tickets import Ticket
 from app.services.tickets import (
     _is_support_candidate,
+    append_reply,
     create_ticket_from_message,
     ingest_inbox,
     ticket_messages,
@@ -100,3 +102,35 @@ async def test_ingest_dedups_and_filters(monkeypatch: pytest.MonkeyPatch) -> Non
 
         total = (await session.exec(select(TicketMessage))).all()
         assert len(total) == 1
+
+
+@pytest.mark.asyncio
+async def test_reply_resumes_awaiting_ticket() -> None:
+    async with await _session() as session:
+        brand = Brand(name="Test")
+        session.add(brand)
+        await session.flush()
+        t = Ticket(brand_id=brand.id, subject="Refund", customer_email="s@x.com",
+                   status="awaiting_customer", external_ref="conv-1")
+        session.add(t)
+        await session.commit()
+        await session.refresh(t)
+        reply = dict(SAMPLE_GRAPH_MSG, id="reply-1", conversationId="conv-1")
+        await append_reply(session, t, normalize_message(reply))
+        assert t.status == "auto_handling"  # resumed
+        assert len(await ticket_messages(session, t.id)) == 1
+
+
+@pytest.mark.asyncio
+async def test_reply_to_needs_rep_stays_sticky() -> None:
+    async with await _session() as session:
+        brand = Brand(name="Test")
+        session.add(brand)
+        await session.flush()
+        t = Ticket(brand_id=brand.id, subject="Complaint", customer_email="s@x.com",
+                   status="needs_rep", external_ref="conv-2")
+        session.add(t)
+        await session.commit()
+        await session.refresh(t)
+        await append_reply(session, t, normalize_message(dict(SAMPLE_GRAPH_MSG, id="r2", conversationId="conv-2")))
+        assert t.status == "needs_rep"  # Invariant 3: never re-auto

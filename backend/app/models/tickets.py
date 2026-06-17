@@ -43,6 +43,10 @@ class Ticket(QueryModel, table=True):
     external_ref: str = Field(default="", index=True)
     inbound_message_external_id: str = Field(default="")
     assigned_user_id: UUID | None = Field(default=None, foreign_key="users.id", index=True)
+    # Flow-execution state (set when a flow is running across customer turns).
+    flow_id: UUID | None = Field(default=None, foreign_key="flows.id", index=True)
+    flow_step: int = Field(default=0)
+    flow_data: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
     last_customer_msg_at: datetime | None = Field(default=None)

@@ -4,6 +4,7 @@ from app.models.activity_events import ActivityEvent
 from app.models.agents import Agent
 from app.models.agent_config import AgentConfig
 from app.models.brand import Brand, Store
+from app.models.flow import Flow
 from app.models.insight import Insight
 from app.models.refunds import RefundRequest
 from app.models.team_task import TeamTask
@@ -51,6 +52,7 @@ __all__ = [
     "AgentConfig",
     "TeamTask",
     "Insight",
+    "Flow",
     "ApprovalTaskLink",
     "Approval",
     "BoardGroupMemory",

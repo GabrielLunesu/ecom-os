@@ -13,6 +13,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.logging import get_logger
 from app.models.tickets import Ticket
 from app.services.agent_runtime.base import AgentRuntime
+from app.services.agent_runtime.flow import FlowCSRuntime
 from app.services.agent_runtime.hermes import HermesRuntime
 from app.services.agent_runtime.in_app import InAppCSRuntime
 from app.services.agent_runtime.llm import LLMCSRuntime
@@ -24,6 +25,7 @@ from app.services.connectors.composio_inbox import (
 )
 from app.services.connectors.registry import shopify_connector_for
 from app.services.connectors.secrets import ConnectionRef, env_or_setting
+from app.services.flow_seeds import ensure_seed_flows
 from app.services.stores import ensure_seed, list_stores
 from app.services.tickets import ingest_inbox
 
@@ -45,6 +47,8 @@ def _select_runtime(
         return HermesRuntime(shopify=shopify, inbox=inbox, store_domain=store_domain)
     if mode == "llm":
         return LLMCSRuntime(shopify=shopify, inbox=inbox, store_domain=store_domain)
+    if mode == "flow":
+        return FlowCSRuntime(shopify=shopify, inbox=inbox, store_domain=store_domain)
     return InAppCSRuntime(shopify=shopify, inbox=inbox, store_domain=store_domain)
 
 
@@ -52,6 +56,7 @@ async def run_cs_loop(session: AsyncSession) -> dict[str, object]:
     await assert_ready_for_cs_loop()  # gate (§1.5)
 
     brand = await ensure_seed(session)
+    await ensure_seed_flows(session, brand)  # default WISMO + refund flows
     stores = await list_stores(session)
     if not stores:
         return {"error": "no store connected"}

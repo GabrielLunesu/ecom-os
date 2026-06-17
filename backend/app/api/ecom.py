@@ -365,6 +365,56 @@ async def get_insights(session: AsyncSession = Depends(get_session)) -> list[Ins
     return [InsightOut.model_validate(r, from_attributes=True) for r in rows]
 
 
+# --- Flows (configurable CS SOPs) ---
+class FlowOut(BaseModel):
+    id: UUID
+    name: str
+    intent: str
+    enabled: bool
+    triggers: list[str] | None
+    escalate_keywords: list[str] | None
+    steps: list[dict[str, object]] | None
+
+
+class FlowIn(BaseModel):
+    name: str
+    enabled: bool
+    triggers: list[str]
+    escalate_keywords: list[str]
+    steps: list[dict[str, object]]
+
+
+@router.get("/flows", response_model=list[FlowOut])
+async def get_flows(session: AsyncSession = Depends(get_session)) -> list[FlowOut]:
+    """List the brand's CS flows (seeded with WISMO + refund-deflection)."""
+    from app.services.flow_engine import list_flows
+    from app.services.flow_seeds import ensure_seed_flows
+
+    brand = await ensure_seed(session)
+    await ensure_seed_flows(session, brand)
+    return [FlowOut.model_validate(f, from_attributes=True) for f in await list_flows(session)]
+
+
+@router.put("/flows/{flow_id}", response_model=FlowOut)
+async def put_flow(
+    flow_id: UUID, payload: FlowIn, session: AsyncSession = Depends(get_session)
+) -> FlowOut:
+    from app.services.flow_engine import update_flow
+
+    flow = await update_flow(
+        session,
+        flow_id,
+        name=payload.name,
+        enabled=payload.enabled,
+        triggers=payload.triggers,
+        escalate_keywords=payload.escalate_keywords,
+        steps=payload.steps,
+    )
+    if flow is None:
+        raise HTTPException(status_code=404, detail="flow not found")
+    return FlowOut.model_validate(flow, from_attributes=True)
+
+
 class ChatIn(BaseModel):
     message: str
 

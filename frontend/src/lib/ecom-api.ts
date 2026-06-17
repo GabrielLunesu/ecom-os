@@ -182,6 +182,47 @@ export function useAgents() {
   return useQuery({ queryKey: ["ecom", "agents"], queryFn: fetchAgents, staleTime: 30_000 });
 }
 
+// --- Flows (configurable CS SOPs) ---
+export type FlowStep = {
+  type: string;
+  message?: string;
+  percent?: number;
+  slug?: string;
+  accept_message?: string;
+  reason?: string;
+};
+export type Flow = {
+  id: string;
+  name: string;
+  intent: string;
+  enabled: boolean;
+  triggers: string[] | null;
+  escalate_keywords: string[] | null;
+  steps: FlowStep[] | null;
+};
+
+export const fetchFlows = async (): Promise<Flow[]> =>
+  (await customFetch<Wrapped<Flow[]>>("/api/v1/ecom/flows", { method: "GET" })).data;
+
+export const saveFlow = async (
+  id: string,
+  payload: {
+    name: string;
+    enabled: boolean;
+    triggers: string[];
+    escalate_keywords: string[];
+    steps: FlowStep[];
+  },
+): Promise<Flow> =>
+  (await customFetch<Wrapped<Flow>>(`/api/v1/ecom/flows/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })).data;
+
+export function useFlows() {
+  return useQuery({ queryKey: ["ecom", "flows"], queryFn: fetchFlows, staleTime: 30_000 });
+}
+
 // --- Insights ---
 export type Insight = { kind: string; severity: string; title: string; detail: string };
 
