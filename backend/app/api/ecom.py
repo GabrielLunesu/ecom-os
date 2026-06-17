@@ -6,6 +6,7 @@ Responses carry provider/status only; never secrets (Invariant 5).
 
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
@@ -19,6 +20,12 @@ from app.db.session import get_session
 from app.services.connection_health import connections_status
 from app.services.metrics import store_metrics
 from app.services.stores import ensure_seed, list_stores
+from app.services.tickets import (
+    get_ticket,
+    ingest_inbox,
+    list_tickets,
+    ticket_messages,
+)
 from app.services.vault import (
     ensure_seed_vault,
     get_document,
@@ -128,3 +135,55 @@ async def put_vault_doc(
         body=payload.body,
     )
     return VaultDocOut.model_validate(doc, from_attributes=True)
+
+
+# --- Tickets (CS) ---
+class TicketOut(BaseModel):
+    id: UUID
+    subject: str
+    customer_email: str
+    customer_name: str
+    status: str
+    channel: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class TicketMessageOut(BaseModel):
+    direction: str
+    author: str
+    body: str
+    untrusted: bool
+    created_at: datetime
+
+
+class TicketDetailOut(TicketOut):
+    messages: list[TicketMessageOut]
+
+
+@router.get("/tickets", response_model=list[TicketOut])
+async def get_tickets(session: AsyncSession = Depends(get_session)) -> list[TicketOut]:
+    tickets = await list_tickets(session)
+    return [TicketOut.model_validate(t, from_attributes=True) for t in tickets]
+
+
+@router.get("/tickets/{ticket_id}", response_model=TicketDetailOut)
+async def get_ticket_detail(
+    ticket_id: UUID, session: AsyncSession = Depends(get_session)
+) -> TicketDetailOut:
+    ticket = await get_ticket(session, ticket_id)
+    if ticket is None:
+        raise HTTPException(status_code=404, detail="ticket not found")
+    msgs = await ticket_messages(session, ticket_id)
+    return TicketDetailOut(
+        **TicketOut.model_validate(ticket, from_attributes=True).model_dump(),
+        messages=[TicketMessageOut.model_validate(m, from_attributes=True) for m in msgs],
+    )
+
+
+@router.post("/tickets/ingest")
+async def post_ingest(session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+    """Pull unread inbound mail and create tickets (Build Spec §7, §9a step 2)."""
+    brand = await ensure_seed(session)
+    created = await ingest_inbox(session, brand)
+    return {"ingested": len(created), "ticket_ids": [str(t.id) for t in created]}
