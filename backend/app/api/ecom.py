@@ -187,3 +187,14 @@ async def post_ingest(session: AsyncSession = Depends(get_session)) -> dict[str,
     brand = await ensure_seed(session)
     created = await ingest_inbox(session, brand)
     return {"ingested": len(created), "ticket_ids": [str(t.id) for t in created]}
+
+
+@router.post("/cs/run")
+async def post_cs_run(session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+    """Run the CS loop: ingest mail + autonomously handle actionable tickets.
+
+    Gated on the §1.5 health check; the CS agent has read + discount tools only
+    (Invariant 2). This is the engine behind the WISMO acceptance test (§9a)."""
+    from app.services.cs_loop import run_cs_loop
+
+    return await run_cs_loop(session)
