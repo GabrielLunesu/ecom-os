@@ -391,6 +391,33 @@ async def post_cs_run(session: AsyncSession = Depends(get_session)) -> dict[str,
     return await run_cs_loop(session)
 
 
+# --- Realtime (instant handling via the inbound-email webhook) ---
+def _realtime_webhook_url() -> str:
+    from app.api.ecom_webhooks import webhook_secret
+    from app.core.config import settings
+
+    base = settings.base_url.rstrip("/")
+    return f"{base}/api/v1/ecom/webhooks/email?token={webhook_secret()}"
+
+
+@router.get("/realtime")
+async def get_realtime() -> dict[str, object]:
+    """Realtime status + the webhook URL to set as Composio's project webhook."""
+    from app.services.realtime import realtime_status
+
+    status = await realtime_status()
+    return {**status, "webhook_url": _realtime_webhook_url()}
+
+
+@router.post("/realtime/enable")
+async def post_realtime_enable() -> dict[str, object]:
+    """Enable the new-email trigger so the loop runs the instant mail arrives."""
+    from app.services.realtime import enable_email_trigger
+
+    result = await enable_email_trigger()
+    return {**result, "webhook_url": _realtime_webhook_url()}
+
+
 # --- Refunds (separate, approval-gated path — Invariant 2) ---
 class RefundOut(BaseModel):
     id: UUID

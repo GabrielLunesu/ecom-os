@@ -21,10 +21,12 @@ import {
   addStore,
   connectShopify,
   deleteSecret,
+  enableRealtime,
   removeStore,
   setSecret,
   setStoreProfile,
   useConnections,
+  useRealtime,
   useSecretsStatus,
   useStores,
   useVersion,
@@ -389,6 +391,51 @@ function StoreRow({ store, first }: { store: EcomStore; first: boolean }) {
   );
 }
 
+function RealtimeCard() {
+  const qc = useQueryClient();
+  const rt = useRealtime();
+  const enable = useMutation({
+    mutationFn: enableRealtime,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ecom", "realtime"] }),
+  });
+  const on = rt.data?.enabled ?? false;
+  return (
+    <section className="mb-6">
+      <h2 className="mb-2 text-sm font-semibold tracking-[-0.01em] text-strong">Realtime</h2>
+      <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 shadow-card">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-strong">Instant email handling</p>
+            <p className="mt-0.5 text-xs text-muted">
+              {on
+                ? "On — new emails are handled the moment they arrive."
+                : "Off — emails are handled on the ~2 min cron poll."}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <SetBadge set={on} />
+            <Button size="sm" onClick={() => enable.mutate()} disabled={enable.isPending}>
+              {enable.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : on ? (
+                "Re-sync"
+              ) : (
+                "Enable"
+              )}
+            </Button>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-muted">
+          One-time setup: in your Composio project webhook settings, set the delivery URL to:
+        </p>
+        <code className="mt-1 block truncate rounded bg-[color:var(--surface-muted)] px-2 py-1 font-mono text-[11px] text-strong">
+          {rt.data?.webhook_url ?? "…"}
+        </code>
+      </div>
+    </section>
+  );
+}
+
 export default function SettingsPage() {
   const connections = useConnections();
   const stores = useStores();
@@ -502,6 +549,8 @@ export default function SettingsPage() {
           connect a store via OAuth.
         </p>
       </section>
+
+      <RealtimeCard />
 
       {/* Software — version + self-update. */}
       <section className="mb-6">

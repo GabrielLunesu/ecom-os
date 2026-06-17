@@ -16,6 +16,7 @@ from app.api.agents import router as agents_router
 from app.api.approvals import router as approvals_router
 from app.api.auth import router as auth_router
 from app.api.ecom import router as ecom_router
+from app.api.ecom_webhooks import router as ecom_webhooks_router
 from app.api.board_group_memory import router as board_group_memory_router
 from app.api.board_groups import router as board_groups_router
 from app.api.board_memory import router as board_memory_router
@@ -571,6 +572,7 @@ api_v1.include_router(task_custom_fields_router)
 api_v1.include_router(tags_router)
 api_v1.include_router(users_router)
 api_v1.include_router(ecom_router)
+api_v1.include_router(ecom_webhooks_router)
 app.include_router(api_v1)
 
 add_pagination(app)

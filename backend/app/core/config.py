@@ -70,6 +70,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     hermes_gateway_url: str = ""
     hermes_api_key: str = ""
+    # Shared secret for the realtime inbound-email webhook (derived from
+    # LOCAL_AUTH_TOKEN when unset).
+    ecom_webhook_secret: str = ""
 
     # Security response headers (set to blank to disable a specific header)
     security_header_x_content_type_options: str = "nosniff"

@@ -143,7 +143,9 @@ indefinitely. Ask me for anything you need; never invent secrets. Report after e
 8. (After the test passes) Expose the dashboard via a Cloudflare Tunnel (route the hostname to
    http://proxy:80, set TUNNEL_TOKEN + BASE_URL + CORS_ORIGINS, re-run up.sh with the tunnel). Then
    upgrade the brain: set CS_RUNTIME=hermes and point your `cs` profile at the MCP server
-   (`python -m app.mcp_server`, toolset `mcp-ecom-os`, read + discount tools only).
+   (`python -m app.mcp_server`, toolset `mcp-ecom-os`, read + discount tools only). For
+   instant (not 2-min-poll) handling, POST /api/v1/ecom/realtime/enable and set my Composio
+   project webhook URL to the value from GET /api/v1/ecom/realtime.
 
 From now on this dashboard is always-on and is my system of record for analytics, CS, tasks, and
 the brand vault. Manage connections + stores in Settings; surface insight anomalies proactively.

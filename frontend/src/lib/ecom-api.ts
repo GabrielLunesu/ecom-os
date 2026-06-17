@@ -272,6 +272,22 @@ export function useInsights() {
   return useQuery({ queryKey: ["ecom", "insights"], queryFn: fetchInsights, staleTime: 60_000 });
 }
 
+// --- Realtime (instant email handling) ---
+export type Realtime = { enabled: boolean; webhook_url: string; detail?: string };
+
+export const fetchRealtime = async (): Promise<Realtime> =>
+  (await customFetch<Wrapped<Realtime>>("/api/v1/ecom/realtime", { method: "GET" })).data;
+
+export const enableRealtime = async (): Promise<Realtime> =>
+  (await customFetch<Wrapped<Realtime>>("/api/v1/ecom/realtime/enable", {
+    method: "POST",
+    body: "{}",
+  })).data;
+
+export function useRealtime() {
+  return useQuery({ queryKey: ["ecom", "realtime"], queryFn: fetchRealtime, staleTime: 30_000 });
+}
+
 // --- Team tasks (per-person Kanban) ---
 export type TeamTask = { id: string; title: string; assignee: string; status: string };
 
