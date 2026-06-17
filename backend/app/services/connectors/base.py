@@ -46,6 +46,16 @@ class ShopifyConnector(abc.ABC):
     async def get_fulfillments(self, order_id: str) -> list[dict[str, Any]]:
         """Tracking/shipping status for an order (WISMO answer)."""
 
+    @abc.abstractmethod
+    async def list_orders(
+        self,
+        *,
+        created_at_min: str | None = None,
+        created_at_max: str | None = None,
+        limit: int = 250,
+    ) -> list[dict[str, Any]]:
+        """List orders in a date window (for KPIs/analytics). Read-only."""
+
     # --- discounts (Tier 0/1 CS capability) --------------------------------
     @abc.abstractmethod
     async def create_discount(

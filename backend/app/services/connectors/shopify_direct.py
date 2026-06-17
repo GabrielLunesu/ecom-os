@@ -20,6 +20,18 @@ TOKEN_HANDLE = "SHOPIFY_ACCESS_TOKEN"
 _TIMEOUT = httpx.Timeout(30.0)
 
 
+def _parse_next_link(link_header: str) -> str | None:
+    """Extract the rel="next" URL from a Shopify Link header, if present."""
+    for part in link_header.split(","):
+        segments = part.split(";")
+        if len(segments) < 2:
+            continue
+        url = segments[0].strip().strip("<>")
+        if any('rel="next"' in s for s in segments[1:]):
+            return url
+    return None
+
+
 class DirectShopifyConnector(ShopifyConnector):
     """Talk to one store's Admin REST API with a direct offline token."""
 
@@ -86,6 +98,41 @@ class DirectShopifyConnector(ShopifyConnector):
         data = await self._get(f"/orders/{order_id}/fulfillments.json")
         fulfillments: list[dict[str, Any]] = data.get("fulfillments", [])
         return fulfillments
+
+    async def list_orders(
+        self,
+        *,
+        created_at_min: str | None = None,
+        created_at_max: str | None = None,
+        limit: int = 250,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {
+            "status": "any",
+            "limit": min(limit, 250),
+            "fields": "id,name,total_price,subtotal_price,currency,created_at,financial_status",
+        }
+        if created_at_min:
+            params["created_at_min"] = created_at_min
+        if created_at_max:
+            params["created_at_max"] = created_at_max
+
+        orders: list[dict[str, Any]] = []
+        path = "/orders.json"
+        # Follow Shopify cursor pagination (Link header) up to a sane page cap.
+        for _ in range(20):
+            async with self._client() as client:
+                resp = await client.get(path, params=params)
+                resp.raise_for_status()
+                body: dict[str, Any] = resp.json()
+                orders.extend(body.get("orders", []))
+                link = resp.headers.get("Link", "")
+            next_url = _parse_next_link(link)
+            if not next_url:
+                break
+            # subsequent pages use page_info only
+            path = next_url
+            params = {}
+        return orders
 
     # --- discounts ---------------------------------------------------------
     async def create_discount(

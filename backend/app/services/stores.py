@@ -31,10 +31,11 @@ async def ensure_seed(session: AsyncSession) -> Brand:
         ).first()
         if existing is None:
             connected = bool(env_or_setting("SHOPIFY_ACCESS_TOKEN").strip())
+            name = await _resolve_store_name(domain, connected)
             session.add(
                 Store(
                     brand_id=brand.id,
-                    name=domain.split(".")[0].replace("-", " ").title(),
+                    name=name,
                     domain=domain,
                     provider="direct",
                     external_id=domain,  # ref, not a secret
@@ -43,6 +44,22 @@ async def ensure_seed(session: AsyncSession) -> Brand:
             )
     await session.commit()
     return brand
+
+
+async def _resolve_store_name(domain: str, connected: bool) -> str:
+    """Best-effort: use the live Shopify shop name; fall back to the domain slug."""
+    fallback = domain.split(".")[0].replace("-", " ").title()
+    if not connected:
+        return fallback
+    try:
+        from app.services.connectors.registry import shopify_connector_for
+        from app.services.connectors.secrets import ConnectionRef
+
+        conn = shopify_connector_for(ConnectionRef(provider="direct", external_id=domain))
+        shop = await conn.get_shop()
+        return str(shop.get("name") or fallback).title()
+    except Exception:  # noqa: BLE001 - seeding must never fail on a network hiccup
+        return fallback
 
 
 async def list_stores(session: AsyncSession) -> list[Store]:

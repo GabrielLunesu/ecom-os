@@ -110,6 +110,7 @@ def test_shopify_connector_exposes_only_read_and_discount() -> None:
         "get_order",
         "search_orders",
         "get_fulfillments",
+        "list_orders",
         "create_discount",
     }
 

@@ -14,6 +14,8 @@ type Props = {
   suffix?: string;
   delta?: number; // percent change vs comparison period
   loading?: boolean;
+  /** When set, the metric is unavailable; the reason is shown and value hidden. */
+  unavailable?: string;
 };
 
 /** A single KPI tile with an animated counter and soft elevation. */
@@ -25,6 +27,7 @@ export function KpiCard({
   suffix,
   delta,
   loading,
+  unavailable,
 }: Props) {
   return (
     <motion.div
@@ -34,7 +37,12 @@ export function KpiCard({
       className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 shadow-card"
     >
       <p className="text-[13px] font-medium text-muted">{label}</p>
-      {loading ? (
+      {unavailable ? (
+        <div className="mt-1.5" title={unavailable}>
+          <span className="text-[28px] font-semibold tracking-[-0.02em] text-quiet">—</span>
+          <p className="mt-0.5 text-[11px] text-quiet">n/a</p>
+        </div>
+      ) : loading ? (
         <div className="mt-2 h-8 w-24 animate-pulse rounded-md bg-[color:var(--surface-muted)]" />
       ) : (
         <div className="mt-1.5 flex items-baseline gap-2">

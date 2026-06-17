@@ -15,6 +15,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.api.deps import require_user_auth
 from app.db.session import get_session
 from app.services.connection_health import connections_status
+from app.services.metrics import store_metrics
 from app.services.stores import ensure_seed, list_stores
 
 router = APIRouter(prefix="/ecom", tags=["ecom"], dependencies=[Depends(require_user_auth)])
@@ -52,3 +53,16 @@ async def get_stores(session: AsyncSession = Depends(get_session)) -> list[Store
     await ensure_seed(session)
     stores = await list_stores(session)
     return [StoreOut.model_validate(s, from_attributes=True) for s in stores]
+
+
+@router.get("/metrics")
+async def get_metrics(
+    store: str = "all",
+    days: int = 30,
+    session: AsyncSession = Depends(get_session),
+) -> dict[str, object]:
+    """KPIs for a store or the aggregate (Build Spec §7.1). Order-derived; session
+    metrics return null with a reason (no read_reports scope)."""
+    await ensure_seed(session)
+    days = max(1, min(days, 365))
+    return await store_metrics(session, store_id=store, days=days)

@@ -26,11 +26,50 @@ export type Connections = {
   providers: ProviderHealth[];
 };
 
-export const fetchStores = () =>
-  customFetch<EcomStore[]>("/api/v1/ecom/stores", { method: "GET" });
+/** customFetch wraps responses as { data, status, headers } — unwrap to the body. */
+type Wrapped<T> = { data: T; status: number };
 
-export const fetchConnections = () =>
-  customFetch<Connections>("/api/v1/ecom/connections", { method: "GET" });
+export const fetchStores = async (): Promise<EcomStore[]> =>
+  (await customFetch<Wrapped<EcomStore[]>>("/api/v1/ecom/stores", { method: "GET" }))
+    .data;
+
+export const fetchConnections = async (): Promise<Connections> =>
+  (await customFetch<Wrapped<Connections>>("/api/v1/ecom/connections", { method: "GET" }))
+    .data;
+
+export type Kpis = {
+  revenue: number;
+  orders: number;
+  aov: number;
+  currency: string;
+  sessions: number | null;
+  conversion: number | null;
+  atc_rate: number | null;
+};
+
+export type Metrics = {
+  scope: string;
+  days: number;
+  kpis: Kpis;
+  per_store: Array<Kpis & { store_id: string; store_name: string }>;
+  unavailable: Record<string, string>;
+};
+
+export const fetchMetrics = async (store: string, days: number): Promise<Metrics> =>
+  (
+    await customFetch<Wrapped<Metrics>>(
+      `/api/v1/ecom/metrics?store=${encodeURIComponent(store)}&days=${days}`,
+      { method: "GET" },
+    )
+  ).data;
+
+export function useMetrics(store: string, days: number) {
+  return useQuery({
+    queryKey: ["ecom", "metrics", store, days],
+    queryFn: () => fetchMetrics(store, days),
+    staleTime: 30_000,
+  });
+}
 
 export function useStores() {
   return useQuery({
