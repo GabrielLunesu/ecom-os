@@ -299,6 +299,55 @@ class AgentIn(BaseModel):
     enabled: bool
 
 
+class TaskOut(BaseModel):
+    id: UUID
+    title: str
+    assignee: str
+    status: str
+
+
+class TaskCreateIn(BaseModel):
+    title: str
+    assignee: str = ""
+
+
+class TaskUpdateIn(BaseModel):
+    status: str | None = None
+    assignee: str | None = None
+
+
+@router.get("/tasks", response_model=list[TaskOut])
+async def get_team_tasks(session: AsyncSession = Depends(get_session)) -> list[TaskOut]:
+    from app.services.team_tasks import ensure_seed_tasks, list_tasks
+
+    brand = await ensure_seed(session)
+    await ensure_seed_tasks(session, brand)
+    return [TaskOut.model_validate(t, from_attributes=True) for t in await list_tasks(session)]
+
+
+@router.post("/tasks", response_model=TaskOut)
+async def post_team_task(
+    payload: TaskCreateIn, session: AsyncSession = Depends(get_session)
+) -> TaskOut:
+    from app.services.team_tasks import create_task
+
+    brand = await ensure_seed(session)
+    task = await create_task(session, brand, title=payload.title, assignee=payload.assignee)
+    return TaskOut.model_validate(task, from_attributes=True)
+
+
+@router.patch("/tasks/{task_id}", response_model=TaskOut)
+async def patch_team_task(
+    task_id: UUID, payload: TaskUpdateIn, session: AsyncSession = Depends(get_session)
+) -> TaskOut:
+    from app.services.team_tasks import update_task
+
+    task = await update_task(session, task_id, status=payload.status, assignee=payload.assignee)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    return TaskOut.model_validate(task, from_attributes=True)
+
+
 class ChatIn(BaseModel):
     message: str
 

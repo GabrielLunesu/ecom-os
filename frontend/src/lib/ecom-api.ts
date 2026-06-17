@@ -182,6 +182,31 @@ export function useAgents() {
   return useQuery({ queryKey: ["ecom", "agents"], queryFn: fetchAgents, staleTime: 30_000 });
 }
 
+// --- Team tasks (per-person Kanban) ---
+export type TeamTask = { id: string; title: string; assignee: string; status: string };
+
+export const fetchTeamTasks = async (): Promise<TeamTask[]> =>
+  (await customFetch<Wrapped<TeamTask[]>>("/api/v1/ecom/tasks", { method: "GET" })).data;
+
+export const createTeamTask = async (title: string, assignee: string): Promise<TeamTask> =>
+  (await customFetch<Wrapped<TeamTask>>("/api/v1/ecom/tasks", {
+    method: "POST",
+    body: JSON.stringify({ title, assignee }),
+  })).data;
+
+export const updateTeamTask = async (
+  id: string,
+  patch: { status?: string; assignee?: string },
+): Promise<TeamTask> =>
+  (await customFetch<Wrapped<TeamTask>>(`/api/v1/ecom/tasks/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  })).data;
+
+export function useTeamTasks() {
+  return useQuery({ queryKey: ["ecom", "tasks"], queryFn: fetchTeamTasks, staleTime: 15_000 });
+}
+
 // --- Chat (read-only copilot) ---
 export type ChatSource = { type: string; ref: string };
 export type ChatResponse = { answer: string; sources: ChatSource[] };
