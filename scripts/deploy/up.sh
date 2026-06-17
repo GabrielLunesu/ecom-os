@@ -24,17 +24,16 @@ docker compose version >/dev/null 2>&1 || { err "docker compose v2 not found"; e
 set -a; . ./.env; set +a
 missing=0
 need() { if [ -z "${!1:-}" ]; then err "missing required env: $1"; missing=1; fi; }
+# Only auth is required to boot — connectors (Composio key, Shopify, stores) are
+# configured in the dashboard Settings after launch.
 need AUTH_MODE
 need LOCAL_AUTH_TOKEN
-need COMPOSIO_API_KEY
-need SHOPIFY_STORE_URL
 _tok="${LOCAL_AUTH_TOKEN:-}"
 if [ "${AUTH_MODE:-}" = "local" ] && [ "${#_tok}" -lt 50 ]; then
   err "LOCAL_AUTH_TOKEN must be >= 50 chars for AUTH_MODE=local"; missing=1
 fi
-if [ -z "${SHOPIFY_ACCESS_TOKEN:-}" ]; then
-  info "SHOPIFY_ACCESS_TOKEN not set — connect Shopify via Composio, or run scripts/bootstrap/shopify_oauth.py"
-fi
+[ -n "${COMPOSIO_API_KEY:-}" ] || info "COMPOSIO_API_KEY unset — set it in Settings after boot"
+[ -n "${SHOPIFY_STORE_URL:-}${SHOPIFY_ACCESS_TOKEN:-}" ] || info "No Shopify config — add + connect a store in Settings (client id + secret)"
 case "${CS_RUNTIME:-}" in
   llm|hermes)
     [ -n "${ANTHROPIC_API_KEY:-}" ] || info "CS_RUNTIME=$CS_RUNTIME but ANTHROPIC_API_KEY is unset — the LLM brain won't run"
