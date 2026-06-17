@@ -3,6 +3,7 @@
 from app.models.activity_events import ActivityEvent
 from app.models.agents import Agent
 from app.models.brand import Brand, Store
+from app.models.vault import VaultDocument
 from app.models.approval_task_links import ApprovalTaskLink
 from app.models.approvals import Approval
 from app.models.board_group_memory import BoardGroupMemory
@@ -36,6 +37,7 @@ __all__ = [
     "Agent",
     "Brand",
     "Store",
+    "VaultDocument",
     "ApprovalTaskLink",
     "Approval",
     "BoardGroupMemory",

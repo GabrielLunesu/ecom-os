@@ -71,6 +71,38 @@ export function useMetrics(store: string, days: number) {
   });
 }
 
+// --- Vault (brand markdown docs) ---
+export type VaultSummary = { slug: string; title: string; tags: string };
+export type VaultDoc = VaultSummary & { body: string };
+
+export const fetchVaultDocs = async (): Promise<VaultSummary[]> =>
+  (await customFetch<Wrapped<VaultSummary[]>>("/api/v1/ecom/vault", { method: "GET" }))
+    .data;
+
+export const fetchVaultDoc = async (slug: string): Promise<VaultDoc> =>
+  (
+    await customFetch<Wrapped<VaultDoc>>(`/api/v1/ecom/vault/${slug}`, { method: "GET" })
+  ).data;
+
+export const saveVaultDoc = async (
+  slug: string,
+  payload: { title: string; tags: string; body: string },
+): Promise<VaultDoc> =>
+  (
+    await customFetch<Wrapped<VaultDoc>>(`/api/v1/ecom/vault/${slug}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    })
+  ).data;
+
+export function useVaultDocs() {
+  return useQuery({
+    queryKey: ["ecom", "vault"],
+    queryFn: fetchVaultDocs,
+    staleTime: 30_000,
+  });
+}
+
 export function useStores() {
   return useQuery({
     queryKey: ["ecom", "stores"],
