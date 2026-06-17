@@ -2,11 +2,14 @@
 
 import { motion } from "framer-motion";
 
+import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
+
 import { PageHeader } from "@/components/ecom/PageHeader";
 import { KpiCard } from "@/components/ecom/KpiCard";
-import { listContainer } from "@/lib/design/tokens";
+import { cn } from "@/lib/utils";
+import { listContainer, listItem } from "@/lib/design/tokens";
 import { ALL_STORES, useStore } from "@/components/ecom/store-context";
-import { useMetrics } from "@/lib/ecom-api";
+import { useInsights, useMetrics } from "@/lib/ecom-api";
 
 export default function OverviewPage() {
   const { isAggregate, activeStore, activeStoreId } = useStore();
@@ -14,6 +17,7 @@ export default function OverviewPage() {
   const scope = activeStoreId === ALL_STORES ? "all" : activeStoreId;
 
   const { data, isLoading } = useMetrics(scope, 30);
+  const insights = useInsights();
   const k = data?.kpis;
   const unavailable = data?.unavailable ?? {};
 
@@ -68,6 +72,47 @@ export default function OverviewPage() {
           unavailable={unavailable.atc_rate}
         />
       </motion.div>
+
+      <div className="mt-6">
+        <h2 className="mb-2 text-sm font-semibold tracking-[-0.01em] text-strong">Insights</h2>
+        <motion.div
+          variants={listContainer}
+          initial="hidden"
+          animate="show"
+          className="grid gap-2 md:grid-cols-3"
+        >
+          {(insights.data ?? []).map((ins, i) => {
+            const Icon =
+              ins.severity === "warning"
+                ? AlertTriangle
+                : ins.severity === "info" && ins.title.toLowerCase().includes("track")
+                  ? CheckCircle2
+                  : Info;
+            return (
+              <motion.div
+                key={i}
+                variants={listItem}
+                className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-3.5 shadow-card"
+              >
+                <div className="flex items-start gap-2.5">
+                  <Icon
+                    className={cn(
+                      "mt-0.5 h-4 w-4 shrink-0",
+                      ins.severity === "warning"
+                        ? "text-[color:var(--warning)]"
+                        : "text-[color:var(--success)]",
+                    )}
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-strong">{ins.title}</p>
+                    <p className="mt-0.5 text-xs text-quiet">{ins.detail}</p>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </motion.div>
+      </div>
 
       <p className="mt-6 text-sm text-quiet">
         Revenue, orders, and AOV are live from Shopify. Session-based metrics need

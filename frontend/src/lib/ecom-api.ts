@@ -182,6 +182,16 @@ export function useAgents() {
   return useQuery({ queryKey: ["ecom", "agents"], queryFn: fetchAgents, staleTime: 30_000 });
 }
 
+// --- Insights ---
+export type Insight = { kind: string; severity: string; title: string; detail: string };
+
+export const fetchInsights = async (): Promise<Insight[]> =>
+  (await customFetch<Wrapped<Insight[]>>("/api/v1/ecom/insights", { method: "GET" })).data;
+
+export function useInsights() {
+  return useQuery({ queryKey: ["ecom", "insights"], queryFn: fetchInsights, staleTime: 60_000 });
+}
+
 // --- Team tasks (per-person Kanban) ---
 export type TeamTask = { id: string; title: string; assignee: string; status: string };
 

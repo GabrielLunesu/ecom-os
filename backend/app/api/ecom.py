@@ -348,6 +348,23 @@ async def patch_team_task(
     return TaskOut.model_validate(task, from_attributes=True)
 
 
+class InsightOut(BaseModel):
+    kind: str
+    severity: str
+    title: str
+    detail: str
+
+
+@router.get("/insights", response_model=list[InsightOut])
+async def get_insights(session: AsyncSession = Depends(get_session)) -> list[InsightOut]:
+    """Recompute + return reflection-job insights (Build Spec §8.12)."""
+    from app.services.insights import generate_insights
+
+    brand = await ensure_seed(session)
+    rows = await generate_insights(session, brand)
+    return [InsightOut.model_validate(r, from_attributes=True) for r in rows]
+
+
 class ChatIn(BaseModel):
     message: str
 

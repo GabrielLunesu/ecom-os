@@ -109,7 +109,7 @@ class DirectShopifyConnector(ShopifyConnector):
         params: dict[str, Any] = {
             "status": "any",
             "limit": min(limit, 250),
-            "fields": "id,name,total_price,subtotal_price,currency,created_at,financial_status",
+            "fields": "id,name,total_price,subtotal_price,currency,created_at,financial_status,fulfillment_status",
         }
         if created_at_min:
             params["created_at_min"] = created_at_min
