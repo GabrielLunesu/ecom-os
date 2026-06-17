@@ -208,3 +208,73 @@ async def post_cs_run(session: AsyncSession = Depends(get_session)) -> dict[str,
     from app.services.cs_loop import run_cs_loop
 
     return await run_cs_loop(session)
+
+
+# --- Refunds (separate, approval-gated path — Invariant 2) ---
+class RefundOut(BaseModel):
+    id: UUID
+    order_name: str
+    amount: float
+    currency: str
+    reason: str
+    status: str
+    requested_by: str
+    approved_by: str
+    error: str
+
+
+class RefundIn(BaseModel):
+    order_id: str
+    order_name: str = ""
+    amount: float
+    currency: str = "USD"
+    reason: str = ""
+    ticket_id: UUID | None = None
+
+
+@router.get("/refunds", response_model=list[RefundOut])
+async def get_refunds(session: AsyncSession = Depends(get_session)) -> list[RefundOut]:
+    from app.services.refunds import list_refunds
+
+    return [RefundOut.model_validate(r, from_attributes=True) for r in await list_refunds(session)]
+
+
+@router.post("/refunds", response_model=RefundOut)
+async def post_refund(payload: RefundIn, session: AsyncSession = Depends(get_session)) -> RefundOut:
+    from app.services.refunds import create_refund_request
+
+    brand = await ensure_seed(session)
+    req = await create_refund_request(
+        session,
+        brand=brand,
+        order_id=payload.order_id,
+        order_name=payload.order_name,
+        amount=payload.amount,
+        currency=payload.currency,
+        reason=payload.reason,
+        requested_by="operator",
+        ticket_id=payload.ticket_id,
+    )
+    return RefundOut.model_validate(req, from_attributes=True)
+
+
+@router.post("/refunds/{refund_id}/approve", response_model=RefundOut)
+async def approve_refund_ep(
+    refund_id: UUID, session: AsyncSession = Depends(get_session)
+) -> RefundOut:
+    """Approve + execute via the separately-scoped RefundExecutor (Invariant 2)."""
+    from app.services.connectors.refunds import RefundExecutor
+    from app.services.refunds import approve_refund
+
+    req = await approve_refund(session, refund_id, "operator", RefundExecutor.from_env())
+    return RefundOut.model_validate(req, from_attributes=True)
+
+
+@router.post("/refunds/{refund_id}/reject", response_model=RefundOut)
+async def reject_refund_ep(
+    refund_id: UUID, session: AsyncSession = Depends(get_session)
+) -> RefundOut:
+    from app.services.refunds import reject_refund
+
+    req = await reject_refund(session, refund_id, "operator")
+    return RefundOut.model_validate(req, from_attributes=True)
