@@ -290,3 +290,68 @@ export function useConnections() {
     refetchInterval: 30_000,
   });
 }
+
+// --- Secrets (write-only: API never returns values, only set/not-set) ---
+export type SecretStatus = { handle: string; set: boolean };
+
+export const fetchSecrets = async (): Promise<SecretStatus[]> =>
+  (await customFetch<Wrapped<SecretStatus[]>>("/api/v1/ecom/settings/secrets", {
+    method: "GET",
+  })).data;
+
+export const setSecret = async (
+  handle: string,
+  value: string,
+): Promise<SecretStatus> =>
+  (await customFetch<Wrapped<SecretStatus>>(
+    `/api/v1/ecom/settings/secrets/${encodeURIComponent(handle)}`,
+    { method: "PUT", body: JSON.stringify({ value }) },
+  )).data;
+
+export const deleteSecret = async (handle: string): Promise<SecretStatus> =>
+  (await customFetch<Wrapped<SecretStatus>>(
+    `/api/v1/ecom/settings/secrets/${encodeURIComponent(handle)}`,
+    { method: "DELETE" },
+  )).data;
+
+export function useSecretsStatus() {
+  return useQuery({
+    queryKey: ["ecom", "secrets"],
+    queryFn: fetchSecrets,
+    staleTime: 30_000,
+  });
+}
+
+// --- Stores management (add / set token / remove) ---
+export const addStore = async (domain: string, name?: string): Promise<EcomStore> =>
+  (await customFetch<Wrapped<EcomStore>>("/api/v1/ecom/stores", {
+    method: "POST",
+    body: JSON.stringify(name ? { domain, name } : { domain }),
+  })).data;
+
+export const setStoreToken = async (id: string, value: string): Promise<EcomStore> =>
+  (await customFetch<Wrapped<EcomStore>>(
+    `/api/v1/ecom/stores/${encodeURIComponent(id)}/token`,
+    { method: "PUT", body: JSON.stringify({ value }) },
+  )).data;
+
+export const removeStore = async (id: string): Promise<{ removed: boolean }> =>
+  (await customFetch<Wrapped<{ removed: boolean }>>(
+    `/api/v1/ecom/stores/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
+  )).data;
+
+// --- Version / software ---
+export type EcomVersion = { version: string; commit: string };
+
+export const fetchVersion = async (): Promise<EcomVersion> =>
+  (await customFetch<Wrapped<EcomVersion>>("/api/v1/ecom/version", { method: "GET" }))
+    .data;
+
+export function useVersion() {
+  return useQuery({
+    queryKey: ["ecom", "version"],
+    queryFn: fetchVersion,
+    staleTime: 300_000,
+  });
+}

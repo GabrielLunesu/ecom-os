@@ -7,6 +7,7 @@ from app.models.brand import Brand, Store
 from app.models.flow import Flow
 from app.models.insight import Insight
 from app.models.refunds import RefundRequest
+from app.models.secret_entry import SecretEntry
 from app.models.team_task import TeamTask
 from app.models.tickets import Ticket, TicketAudit, TicketEvidence, TicketMessage
 from app.models.vault import VaultDocument
@@ -49,6 +50,7 @@ __all__ = [
     "TicketEvidence",
     "TicketAudit",
     "RefundRequest",
+    "SecretEntry",
     "AgentConfig",
     "TeamTask",
     "Insight",

@@ -440,6 +440,17 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         settings.db_auto_migrate,
     )
     await init_db()
+    # Load dashboard-managed encrypted secrets into the resolver cache so the
+    # connectors can resolve keys set via Settings (env still wins). Best-effort.
+    try:
+        from app.db.session import get_session
+        from app.services.secret_store import load_secret_cache
+
+        async for _s in get_session():
+            await load_secret_cache(_s)
+            break
+    except Exception:  # noqa: BLE001 - never block startup on cache warmup
+        logger.warning("app.lifecycle.secret_cache_warmup_failed", exc_info=True)
     if settings.rate_limit_backend == RateLimitBackend.REDIS:
         validate_rate_limit_redis(settings.rate_limit_redis_url)
         logger.info("app.lifecycle.rate_limit backend=redis")

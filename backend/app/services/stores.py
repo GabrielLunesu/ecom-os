@@ -7,6 +7,8 @@ the store(s) configured for this deployment. Stores carry connection refs only
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -64,3 +66,31 @@ async def _resolve_store_name(domain: str, connected: bool) -> str:
 
 async def list_stores(session: AsyncSession) -> list[Store]:
     return list((await session.exec(select(Store).order_by(Store.name))).all())
+
+
+async def add_store(
+    session: AsyncSession, brand: Brand, domain: str, name: str = ""
+) -> Store:
+    """Add a store with a direct connection ref (status disconnected until tokened)."""
+    store = Store(
+        brand_id=brand.id,
+        name=name or domain.split(".")[0].replace("-", " ").title(),
+        domain=domain,
+        provider="direct",
+        external_id=domain,  # ref, not a secret
+        status="disconnected",
+    )
+    session.add(store)
+    await session.commit()
+    await session.refresh(store)
+    return store
+
+
+async def remove_store(session: AsyncSession, store_id: UUID) -> bool:
+    """Delete a store by id. Returns True if a row was removed."""
+    store = await session.get(Store, store_id)
+    if store is None:
+        return False
+    await session.delete(store)
+    await session.commit()
+    return True

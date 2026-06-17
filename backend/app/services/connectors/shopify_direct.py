@@ -13,7 +13,7 @@ from typing import Any
 import httpx
 
 from .base import ShopifyConnector
-from .secrets import ConnectionRef, env_or_setting, resolve_secret
+from .secrets import ConnectionRef, SecretResolutionError, env_or_setting, resolve_secret
 
 API_VERSION = "2025-01"
 TOKEN_HANDLE = "SHOPIFY_ACCESS_TOKEN"
@@ -39,7 +39,12 @@ class DirectShopifyConnector(ShopifyConnector):
         super().__init__(ref)
         # ref.external_id is the (non-secret) store domain, e.g. *.myshopify.com.
         self._domain = ref.external_id
-        self._token = resolve_secret(TOKEN_HANDLE)
+        # Per-store token first (multi-store), then the global handle (single-store
+        # env setups keep working).
+        try:
+            self._token = resolve_secret(f"{TOKEN_HANDLE}:{self._domain}")
+        except SecretResolutionError:
+            self._token = resolve_secret(TOKEN_HANDLE)
 
     @classmethod
     def from_env(cls) -> "DirectShopifyConnector":

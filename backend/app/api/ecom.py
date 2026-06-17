@@ -19,7 +19,8 @@ from app.api.deps import require_user_auth
 from app.db.session import get_session
 from app.services.connection_health import connections_status
 from app.services.metrics import store_metrics
-from app.services.stores import ensure_seed, list_stores
+from app.services.secret_store import list_handles, set_secret, unset_secret
+from app.services.stores import add_store, ensure_seed, list_stores, remove_store
 from app.services.tickets import (
     get_ticket,
     ingest_inbox,
@@ -69,6 +70,110 @@ async def get_stores(session: AsyncSession = Depends(get_session)) -> list[Store
     await ensure_seed(session)
     stores = await list_stores(session)
     return [StoreOut.model_validate(s, from_attributes=True) for s in stores]
+
+
+# --- Settings: dashboard-managed encrypted secrets (Invariant 5) ---
+class SecretHandleOut(BaseModel):
+    handle: str
+    set: bool
+
+
+class SecretIn(BaseModel):
+    value: str
+
+
+@router.get("/settings/secrets", response_model=list[SecretHandleOut])
+async def get_secrets(session: AsyncSession = Depends(get_session)) -> list[SecretHandleOut]:
+    """List which secret handles are set — values are NEVER returned (Invariant 5)."""
+    return [SecretHandleOut(handle=h, set=True) for h in await list_handles(session)]
+
+
+@router.put("/settings/secrets/{handle}", response_model=SecretHandleOut)
+async def put_secret(
+    handle: str, payload: SecretIn, session: AsyncSession = Depends(get_session)
+) -> SecretHandleOut:
+    """Set an encrypted secret by handle. The value is never logged or returned."""
+    brand = await ensure_seed(session)
+    await set_secret(session, brand, handle, payload.value)
+    return SecretHandleOut(handle=handle, set=True)
+
+
+@router.delete("/settings/secrets/{handle}", response_model=SecretHandleOut)
+async def delete_secret(
+    handle: str, session: AsyncSession = Depends(get_session)
+) -> SecretHandleOut:
+    brand = await ensure_seed(session)
+    await unset_secret(session, brand, handle)
+    return SecretHandleOut(handle=handle, set=False)
+
+
+# --- Stores: multi-store management ---
+class StoreCreateIn(BaseModel):
+    domain: str
+    name: str = ""
+
+
+@router.post("/stores", response_model=StoreOut)
+async def post_store(
+    payload: StoreCreateIn, session: AsyncSession = Depends(get_session)
+) -> StoreOut:
+    """Add a store (connection ref only — token is set separately)."""
+    brand = await ensure_seed(session)
+    store = await add_store(session, brand, domain=payload.domain, name=payload.name)
+    return StoreOut.model_validate(store, from_attributes=True)
+
+
+@router.put("/stores/{store_id}/token", response_model=StoreOut)
+async def put_store_token(
+    store_id: UUID, payload: SecretIn, session: AsyncSession = Depends(get_session)
+) -> StoreOut:
+    """Set a store's Shopify token (encrypted) and mark it connected (Invariant 5)."""
+    from app.models.brand import Store
+
+    brand = await ensure_seed(session)
+    store = await session.get(Store, store_id)
+    if store is None:
+        raise HTTPException(status_code=404, detail="store not found")
+    await set_secret(session, brand, f"SHOPIFY_ACCESS_TOKEN:{store.domain}", payload.value)
+    store.status = "connected"
+    session.add(store)
+    await session.commit()
+    await session.refresh(store)
+    return StoreOut.model_validate(store, from_attributes=True)
+
+
+@router.delete("/stores/{store_id}")
+async def delete_store(
+    store_id: UUID, session: AsyncSession = Depends(get_session)
+) -> dict[str, bool]:
+    removed = await remove_store(session, store_id)
+    if not removed:
+        raise HTTPException(status_code=404, detail="store not found")
+    return {"removed": True}
+
+
+@router.get("/version")
+async def get_version() -> dict[str, str]:
+    """Backend version + short git commit (best-effort; never crashes)."""
+    import subprocess
+    from pathlib import Path
+
+    version_file = Path(__file__).resolve().parents[2] / "VERSION"
+    try:
+        version = version_file.read_text(encoding="utf-8").strip() or "dev"
+    except OSError:
+        version = "dev"
+    try:
+        commit = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=True,
+        ).stdout.strip() or "unknown"
+    except (OSError, subprocess.SubprocessError):
+        commit = "unknown"
+    return {"version": version, "commit": commit}
 
 
 @router.get("/metrics")

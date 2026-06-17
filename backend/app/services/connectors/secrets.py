@@ -93,7 +93,14 @@ def env_or_setting(name: str) -> str:
     # Avoid a circular import at module load.
     from app.core.config import settings
 
-    return str(getattr(settings, name.lower(), "") or "")
+    from_settings = str(getattr(settings, name.lower(), "") or "")
+    if from_settings:
+        return from_settings
+    # Final fallback: a dashboard-managed encrypted secret (decrypted into cache).
+    # Imported lazily to avoid an import cycle (secret_store imports this module).
+    from app.services.secret_store import get_cached
+
+    return get_cached(name) or ""
 
 
 def resolve_secret(handle: str) -> Secret:
