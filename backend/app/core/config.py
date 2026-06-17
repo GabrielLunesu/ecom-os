@@ -59,6 +59,13 @@ class Settings(BaseSettings):
     shopify_refund_access_token: str = ""
     shopify_store_url: str = ""
 
+    # --- Ecom-OS agent runtime ---
+    # CS_RUNTIME selects the brain: "" (deterministic) | "llm" | "hermes".
+    cs_runtime: str = ""
+    anthropic_api_key: str = ""
+    hermes_gateway_url: str = ""
+    hermes_api_key: str = ""
+
     # Security response headers (set to blank to disable a specific header)
     security_header_x_content_type_options: str = "nosniff"
     security_header_x_frame_options: str = "DENY"

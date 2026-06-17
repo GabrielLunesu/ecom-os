@@ -49,6 +49,39 @@ Composio account that holds `write_orders`, never the `cs` profile.
    `cs` subagent and writes the decision/reply back. The dashboard, tickets, evidence, and
    invariants are unchanged — only the brain swaps. This is the production target.
 
+## Wiring it on (turnkey — already in the repo)
+
+The runtime is swappable by one env flag; the deterministic WISMO path stays the
+default, so nothing changes until you opt in.
+
+```bash
+# .env / backend/.env
+CS_RUNTIME=hermes            # "" deterministic (default) | "llm" | "hermes"
+ANTHROPIC_API_KEY=sk-ant-…   # used by the llm runtime, and by hermes as fallback
+HERMES_GATEWAY_URL=…         # when set, the LLM step routes through a Hermes cs subagent
+HERMES_API_KEY=…
+```
+
+- `CS_RUNTIME=llm` → `LLMCSRuntime` (Anthropic tool-use loop: read + `create_discount`,
+  escalate, send_reply — **no refund tool**; untrusted text delimited; discounts capped 20%).
+- `CS_RUNTIME=hermes` → `HermesRuntime` routes the model step through Hermes's
+  gateway `/delegate` with the scoped `cs` profile, and degrades to the direct Anthropic
+  path when `HERMES_GATEWAY_URL` is unset.
+
+The CS subagent reaches Ecom-OS's tools through the **MCP server** (`backend/app/mcp_server/`):
+
+```jsonc
+// Hermes cs-profile MCP config (stdio)
+{ "mcpServers": { "mcp-ecom-os": {
+    "command": "uv", "args": ["run", "python", "-m", "app.mcp_server"],
+    "cwd": "/path/to/ecom-os/backend"
+} } }
+```
+
+```bash
+hermes -p cs --toolsets "mcp-ecom-os"   # read + create_discount only; no refund tool
+```
+
 ## Invariants on Hermes (unchanged, still hard)
 
 - **2 — no refund for CS:** grant the `cs` profile/toolset read + `write_discounts` only. Refunds
