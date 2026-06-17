@@ -3,43 +3,31 @@ import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import { DM_Serif_Display, IBM_Plex_Sans, Sora } from "next/font/google";
+import { Inter } from "next/font/google";
 
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { GlobalLoader } from "@/components/ui/global-loader";
 
 export const metadata: Metadata = {
-  title: "OpenClaw Mission Control",
-  description: "A calm command center for every task.",
+  title: "Ecom-OS",
+  description: "Operations command center for the brand.",
 };
 
-const bodyFont = IBM_Plex_Sans({
+// Single typeface for the whole product: Inter, with tabular figures enabled
+// globally via globals.css. Tracking is tightened on headings (design tokens).
+const sans = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-body",
+  variable: "--font-sans",
   weight: ["400", "500", "600", "700"],
-});
-
-const headingFont = Sora({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-heading",
-  weight: ["500", "600", "700"],
-});
-
-const displayFont = DM_Serif_Display({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-display",
-  weight: ["400"],
 });
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body
-        className={`${bodyFont.variable} ${headingFont.variable} ${displayFont.variable} min-h-screen bg-app text-strong antialiased`}
+        className={`${sans.variable} min-h-screen bg-app text-strong antialiased`}
       >
         <AuthProvider>
           <QueryProvider>

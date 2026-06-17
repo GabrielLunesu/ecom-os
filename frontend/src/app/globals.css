@@ -4,31 +4,71 @@
 
 :root {
   color-scheme: light;
-  --bg: #f8fafc;
+  /* Surface palette — mirrors frontend/src/lib/design/tokens.ts (color.*) */
+  --bg: #f7f8fa;
   --surface: #ffffff;
-  --surface-muted: #f1f5f9;
-  --surface-strong: #e2e8f0;
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --text: #0f172a;
-  --text-muted: #64748b;
-  --text-quiet: #94a3b8;
-  --accent: #2563eb;
-  --accent-strong: #1d4ed8;
-  --accent-soft: rgba(37, 99, 235, 0.12);
-  --success: #16a34a;
-  --warning: #d97706;
+  --surface-muted: #f1f3f6;
+  --surface-strong: #e7eaf0;
+  --border: #eceef2;
+  --border-strong: #dce0e8;
+  --text: #0b1220;
+  --text-muted: #5b6577;
+  --text-quiet: #9aa3b2;
+  --accent: #4f46e5;
+  --accent-strong: #4338ca;
+  --accent-soft: rgba(79, 70, 229, 0.1);
+  --success: #0f9d58;
+  --warning: #d98a04;
   --danger: #dc2626;
-  --shadow-panel:
-    0 1px 3px rgba(15, 23, 42, 0.12), 0 1px 2px rgba(15, 23, 42, 0.08);
+  /* Soft, low-opacity layered elevation — no hard drop shadows (Spec §3) */
   --shadow-card:
-    0 1px 2px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.06);
+    0 1px 2px rgba(11, 18, 32, 0.04), 0 4px 12px rgba(11, 18, 32, 0.05);
+  --shadow-panel:
+    0 2px 6px rgba(11, 18, 32, 0.05), 0 12px 32px rgba(11, 18, 32, 0.06);
+  --shadow-overlay:
+    0 8px 24px rgba(11, 18, 32, 0.1), 0 24px 56px rgba(11, 18, 32, 0.12);
+  /* Shared motion tokens (mirrors tokens.ts duration/easing) */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 0.15s;
+  --dur-base: 0.22s;
+  --dur-slow: 0.4s;
 }
 
 body {
   @apply font-body;
   background: var(--bg);
   color: var(--text);
+  letter-spacing: -0.01em;
+  /* Tabular figures everywhere so KPIs/tables never shift width (Spec §3) */
+  font-feature-settings: "tnum" 1, "lnum" 1, "cv11" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Tight tracking on headings */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Honor reduced-motion: neutralize animations/transitions globally (Spec §3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer utilities {
+  /* Opt-in tabular utility for explicit numeric columns. */
+  .tabular-nums {
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
 }
 
 * {
@@ -128,7 +168,7 @@ body {
 }
 
 .landing-page {
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-sans), sans-serif;
 }
 
 /* Landing (Enterprise) */
@@ -147,7 +187,7 @@ body {
 
   min-height: 100vh;
   font-family:
-    var(--font-body),
+    var(--font-sans),
     -apple-system,
     sans-serif;
   background: var(--neutral-100);
@@ -353,7 +393,7 @@ body {
 }
 
 .landing-enterprise .hero h1 {
-  font-family: var(--font-display), serif;
+  font-family: var(--font-sans), serif;
   font-size: 56px;
   line-height: 1.15;
   color: var(--primary-navy);
@@ -761,7 +801,7 @@ body {
 }
 
 .landing-enterprise .cta-section h2 {
-  font-family: var(--font-display), serif;
+  font-family: var(--font-sans), serif;
   font-size: 42px;
   color: white;
   margin-bottom: 1rem;
