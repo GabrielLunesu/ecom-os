@@ -13,7 +13,32 @@ export type EcomStore = {
   domain: string;
   provider: string;
   status: string;
+  public_url?: string;
+  support_email?: string;
+  support_name?: string;
+  tracking_url?: string;
+  facts?: string;
 };
+
+export type StoreProfile = {
+  name: string;
+  public_url: string;
+  support_email: string;
+  support_name: string;
+  tracking_url: string;
+  facts: string;
+};
+
+export const setStoreProfile = async (
+  id: string,
+  profile: StoreProfile,
+): Promise<EcomStore> =>
+  (
+    await customFetch<Wrapped<EcomStore>>(`/api/v1/ecom/stores/${id}/profile`, {
+      method: "PUT",
+      body: JSON.stringify(profile),
+    })
+  ).data;
 
 export type ProviderHealth = {
   provider: string;

@@ -94,3 +94,33 @@ async def remove_store(session: AsyncSession, store_id: UUID) -> bool:
     await session.delete(store)
     await session.commit()
     return True
+
+
+async def update_store_profile(
+    session: AsyncSession,
+    store_id: UUID,
+    *,
+    name: str,
+    public_url: str,
+    support_email: str,
+    support_name: str,
+    tracking_url: str,
+    facts: str,
+) -> Store | None:
+    """Set the operator-provided store profile the agent uses (no hallucination)."""
+    from app.core.time import utcnow
+
+    store = await session.get(Store, store_id)
+    if store is None:
+        return None
+    store.name = name or store.name
+    store.public_url = public_url
+    store.support_email = support_email
+    store.support_name = support_name
+    store.tracking_url = tracking_url
+    store.facts = facts
+    store.updated_at = utcnow()
+    session.add(store)
+    await session.commit()
+    await session.refresh(store)
+    return store

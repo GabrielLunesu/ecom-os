@@ -22,6 +22,7 @@ import {
   deleteSecret,
   removeStore,
   setSecret,
+  setStoreProfile,
   setStoreToken,
   useConnections,
   useSecretsStatus,
@@ -249,8 +250,72 @@ function AddStoreForm() {
   );
 }
 
+function StoreProfileForm({ store }: { store: EcomStore }) {
+  const qc = useQueryClient();
+  const [f, setF] = useState({
+    name: store.name ?? "",
+    public_url: store.public_url ?? "",
+    support_email: store.support_email ?? "",
+    support_name: store.support_name ?? "",
+    tracking_url: store.tracking_url ?? "",
+    facts: store.facts ?? "",
+  });
+  const [saved, setSaved] = useState(false);
+  const save = useMutation({
+    mutationFn: () => setStoreProfile(store.id, f),
+    onSuccess: () => {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+      qc.invalidateQueries({ queryKey: ["ecom", "stores"] });
+    },
+  });
+  const fld = (k: keyof typeof f, label: string, ph: string) => (
+    <label className="block">
+      <span className="text-xs font-medium text-muted">{label}</span>
+      <input
+        value={f[k]}
+        onChange={(e) => setF({ ...f, [k]: e.target.value })}
+        placeholder={ph}
+        className={cn(inputCls, "mt-1")}
+      />
+    </label>
+  );
+  return (
+    <div className="mt-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--surface-muted)] p-3">
+      <p className="mb-2 text-xs text-quiet">
+        Real store facts the agent uses — it never guesses these.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {fld("name", "Store name", "Chicago Outlet Shop")}
+        {fld("public_url", "Public URL", "chicagooutletshop.com")}
+        {fld("support_email", "Support email", "info@chicagooutletshop.com")}
+        {fld("support_name", "Support sender / signature", "Chicago Outlet Support")}
+        {fld("tracking_url", "Tracking page (optional)", "https://…/account")}
+      </div>
+      <label className="mt-3 block">
+        <span className="text-xs font-medium text-muted">Brand facts (the agent reads these)</span>
+        <textarea
+          value={f.facts}
+          onChange={(e) => setF({ ...f, facts: e.target.value })}
+          placeholder="e.g. US-based outlet. Free returns within 30 days. Ships in 1-2 business days."
+          className={cn(inputCls, "mt-1 h-20 resize-none py-2")}
+        />
+      </label>
+      <Button type="button" size="sm" className="mt-3" disabled={save.isPending} onClick={() => save.mutate()}>
+        {save.isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : saved ? (
+          <Check className="h-4 w-4" />
+        ) : null}
+        Save profile
+      </Button>
+    </div>
+  );
+}
+
 function StoreRow({ store, first }: { store: EcomStore; first: boolean }) {
   const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
   const remove = useMutation({
     mutationFn: () => removeStore(store.id),
     onSuccess: () => {
@@ -260,12 +325,8 @@ function StoreRow({ store, first }: { store: EcomStore; first: boolean }) {
   });
 
   return (
-    <div
-      className={cn(
-        "flex flex-wrap items-center gap-3 px-4 py-3",
-        !first && "border-t border-[color:var(--border)]",
-      )}
-    >
+    <div className={cn("px-4 py-3", !first && "border-t border-[color:var(--border)]")}>
+      <div className="flex flex-wrap items-center gap-3">
       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:var(--accent-soft)] text-[color:var(--accent)]">
         <StoreIcon className="h-4 w-4" />
       </span>
@@ -283,6 +344,9 @@ function StoreRow({ store, first }: { store: EcomStore; first: boolean }) {
       >
         {store.status}
       </span>
+      <Button type="button" size="sm" variant="secondary" onClick={() => setEditing((v) => !v)}>
+        {editing ? "Close" : "Edit profile"}
+      </Button>
       <StoreTokenForm store={store} />
       <Button
         type="button"
@@ -306,6 +370,8 @@ function StoreRow({ store, first }: { store: EcomStore; first: boolean }) {
           <Trash2 className="h-4 w-4 text-[color:var(--danger)]" />
         )}
       </Button>
+      </div>
+      {editing ? <StoreProfileForm store={store} /> : null}
     </div>
   );
 }

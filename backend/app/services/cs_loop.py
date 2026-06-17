@@ -11,6 +11,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.logging import get_logger
+from app.models.brand import Store
 from app.models.tickets import Ticket
 from app.services.agent_runtime.base import AgentRuntime
 from app.services.agent_runtime.flow import FlowCSRuntime
@@ -35,21 +36,30 @@ _ACTIONABLE = ("new", "auto_handling")
 
 
 def _select_runtime(
-    shopify: ShopifyConnector, inbox: InboxConnector, store_domain: str
+    shopify: ShopifyConnector, inbox: InboxConnector, store: Store
 ) -> AgentRuntime:
-    """Pick the CS brain from CS_RUNTIME: "" deterministic | "llm" | "hermes".
+    """Pick the CS brain from CS_RUNTIME: "" deterministic | "flow" | "llm" | "hermes".
 
-    All three take read + discount tools only — never a refund tool (Invariant 2).
-    Hermes degrades to the direct Anthropic path when HERMES_GATEWAY_URL is unset.
+    All take read + discount tools only — never a refund tool (Invariant 2). The flow
+    runtime also gets the operator-set store profile (public URL, signature) so it
+    never hallucinates store facts.
     """
     mode = env_or_setting("CS_RUNTIME").lower()
     if mode == "hermes":
-        return HermesRuntime(shopify=shopify, inbox=inbox, store_domain=store_domain)
+        return HermesRuntime(shopify=shopify, inbox=inbox, store_domain=store.domain)
     if mode == "llm":
-        return LLMCSRuntime(shopify=shopify, inbox=inbox, store_domain=store_domain)
+        return LLMCSRuntime(shopify=shopify, inbox=inbox, store_domain=store.domain)
     if mode == "flow":
-        return FlowCSRuntime(shopify=shopify, inbox=inbox, store_domain=store_domain)
-    return InAppCSRuntime(shopify=shopify, inbox=inbox, store_domain=store_domain)
+        return FlowCSRuntime(
+            shopify=shopify,
+            inbox=inbox,
+            store_domain=store.domain,
+            public_url=store.public_url,
+            support_name=store.support_name or "Support",
+            tracking_url=store.tracking_url,
+            facts=store.facts,
+        )
+    return InAppCSRuntime(shopify=shopify, inbox=inbox, store_domain=store.domain)
 
 
 async def run_cs_loop(session: AsyncSession) -> dict[str, object]:
@@ -73,7 +83,7 @@ async def run_cs_loop(session: AsyncSession) -> dict[str, object]:
     inbox = ComposioInboxConnector(
         ConnectionRef(provider="composio", external_id=account_id or "")
     )
-    runtime = _select_runtime(shopify, inbox, store.domain)
+    runtime = _select_runtime(shopify, inbox, store)
 
     # 3. Handle actionable tickets.
     actionable = (

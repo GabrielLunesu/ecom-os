@@ -26,8 +26,8 @@ SEED_DOCS = [
             "5-8 business days within the United States.\n\n"
             "## Tracking your order\n"
             "Once your order ships you receive a tracking number by email. You can "
-            "check live status any time on our tracking page: "
-            "https://stv0xe-c4.myshopify.com/account\n\n"
+            "check live status any time on the tracking page linked in your order "
+            "confirmation and account.\n\n"
             "If tracking has not updated for more than 3 business days, contact support "
             "and we will investigate with the carrier."
         ),

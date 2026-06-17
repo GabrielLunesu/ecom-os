@@ -8,6 +8,7 @@ the OAuth token (Invariant 1).
 
 from __future__ import annotations
 
+import html as _html
 import re
 from typing import Any
 
@@ -15,6 +16,28 @@ import httpx
 
 from .base import InboxConnector
 from .secrets import ConnectionRef, resolve_secret
+
+_URL_RE = re.compile(r"(https?://[^\s<>]+)")
+
+
+def text_to_html(text: str) -> str:
+    """Render a plain-text message body as simple, safe HTML email.
+
+    Blank lines become paragraphs, single newlines become <br>, and URLs become
+    clickable links. Fixes the "wall of text" plain-text replies in Outlook.
+    """
+    paragraphs = re.split(r"\n\s*\n", (text or "").strip())
+    blocks: list[str] = []
+    for para in paragraphs:
+        escaped = _html.escape(para)
+        linked = _URL_RE.sub(r'<a href="\1">\1</a>', escaped)
+        blocks.append("<p>" + linked.replace("\n", "<br>") + "</p>")
+    inner = "".join(blocks)
+    return (
+        '<div style="font-family:Inter,Segoe UI,Arial,sans-serif;font-size:14px;'
+        'line-height:1.6;color:#0b1220">' + inner + "</div>"
+    )
+
 
 COMPOSIO_BASE = "https://backend.composio.dev/api/v3"
 API_KEY_HANDLE = "COMPOSIO_API_KEY"
@@ -131,13 +154,17 @@ class ComposioInboxConnector(InboxConnector):
     async def send_message(
         self, *, to: str, subject: str, body: str, in_reply_to: str | None = None
     ) -> dict[str, Any]:
-        """Send an outbound reply. Threads via REPLY_EMAIL when in_reply_to is set."""
-        if in_reply_to:
-            return await self._execute(
-                TOOL_REPLY, {"message_id": in_reply_to, "comment": body}
-            )
+        """Send a formatted (HTML) reply email.
+
+        Plain-text replies collapse line breaks in Outlook, so we always send HTML
+        (paragraphs, <br>, clickable links). HTML can't ride the plain-text reply
+        comment, so we send a "Re:" email; ticket threading is matched on the inbound
+        side by conversation id + customer email (see services/tickets.py).
+        """
+        re_subject = subject if subject.lower().startswith("re:") else f"Re: {subject}"
         return await self._execute(
-            TOOL_SEND, {"to_email": to, "subject": subject, "body": body, "is_html": False}
+            TOOL_SEND,
+            {"to_email": to, "subject": re_subject, "body": text_to_html(body), "is_html": True},
         )
 
 

@@ -23,8 +23,26 @@ _ACTION = {"resolve": "auto_resolved", "escalate": "escalated", "wait": "awaitin
 
 
 class FlowCSRuntime(AgentRuntime):
-    def __init__(self, shopify: ShopifyConnector, inbox: InboxConnector, store_domain: str):
-        self.engine = FlowEngine(shopify=shopify, inbox=inbox, store_domain=store_domain)
+    def __init__(
+        self,
+        shopify: ShopifyConnector,
+        inbox: InboxConnector,
+        store_domain: str,
+        *,
+        public_url: str = "",
+        support_name: str = "Support",
+        tracking_url: str = "",
+        facts: str = "",
+    ):
+        self.engine = FlowEngine(
+            shopify=shopify,
+            inbox=inbox,
+            store_domain=store_domain,
+            public_url=public_url,
+            support_name=support_name,
+            tracking_url=tracking_url,
+            facts=facts,
+        )
 
     async def handle_ticket(self, session: AsyncSession, ticket: Ticket) -> HandlingResult:
         if ticket.status in _FROZEN:

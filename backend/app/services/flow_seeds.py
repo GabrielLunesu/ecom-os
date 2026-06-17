@@ -36,7 +36,7 @@ WISMO_FLOW: dict[str, Any] = {
                 "{fulfillment_phrase}\n\nYou can see live delivery status any time on "
                 "our tracking page: {tracking_url}\n\nPer our shipping policy: "
                 "{policy_excerpt}\n\nIf anything still looks off after checking the "
-                "tracking page, just reply here and we'll help.\n\nBest,\nSupport"
+                "tracking page, just reply here and we'll help.\n\nBest,\n{support_name}"
             ),
         },
         {"type": "resolve"},

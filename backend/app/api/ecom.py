@@ -62,6 +62,20 @@ class StoreOut(BaseModel):
     domain: str
     provider: str
     status: str
+    public_url: str = ""
+    support_email: str = ""
+    support_name: str = ""
+    tracking_url: str = ""
+    facts: str = ""
+
+
+class StoreProfileIn(BaseModel):
+    name: str = ""
+    public_url: str = ""
+    support_email: str = ""
+    support_name: str = ""
+    tracking_url: str = ""
+    facts: str = ""
 
 
 @router.get("/stores", response_model=list[StoreOut])
@@ -120,6 +134,28 @@ async def post_store(
     """Add a store (connection ref only — token is set separately)."""
     brand = await ensure_seed(session)
     store = await add_store(session, brand, domain=payload.domain, name=payload.name)
+    return StoreOut.model_validate(store, from_attributes=True)
+
+
+@router.put("/stores/{store_id}/profile", response_model=StoreOut)
+async def put_store_profile(
+    store_id: UUID, payload: StoreProfileIn, session: AsyncSession = Depends(get_session)
+) -> StoreOut:
+    """Set the store profile (real facts the agent uses — never hallucinates)."""
+    from app.services.stores import update_store_profile
+
+    store = await update_store_profile(
+        session,
+        store_id,
+        name=payload.name,
+        public_url=payload.public_url,
+        support_email=payload.support_email,
+        support_name=payload.support_name,
+        tracking_url=payload.tracking_url,
+        facts=payload.facts,
+    )
+    if store is None:
+        raise HTTPException(status_code=404, detail="store not found")
     return StoreOut.model_validate(store, from_attributes=True)
 
 

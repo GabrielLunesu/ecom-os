@@ -141,17 +141,36 @@ async def ticket_evidence(session: AsyncSession, ticket_id: UUID) -> list[Ticket
     )
 
 
-async def _open_ticket_for_conversation(session: AsyncSession, conversation_id: str) -> Ticket | None:
-    """Find a non-resolved ticket in the same email conversation, if any."""
-    if not conversation_id:
-        return None
-    return (
-        await session.exec(
-            select(Ticket)
-            .where(Ticket.external_ref == conversation_id, Ticket.status != "resolved")
-            .order_by(Ticket.created_at.desc())  # type: ignore[attr-defined]
-        )
-    ).first()
+async def _open_ticket_for_reply(
+    session: AsyncSession, conversation_id: str, customer_email: str
+) -> Ticket | None:
+    """Find the open ticket a customer reply belongs to.
+
+    First by email conversation id; then (because HTML replies are sent as a fresh
+    "Re:" thread) by the most recent ticket awaiting THIS customer's reply.
+    """
+    if conversation_id:
+        hit = (
+            await session.exec(
+                select(Ticket)
+                .where(Ticket.external_ref == conversation_id, Ticket.status != "resolved")
+                .order_by(Ticket.created_at.desc())  # type: ignore[attr-defined]
+            )
+        ).first()
+        if hit is not None:
+            return hit
+    if customer_email:
+        return (
+            await session.exec(
+                select(Ticket)
+                .where(
+                    Ticket.customer_email == customer_email,
+                    Ticket.status == "awaiting_customer",
+                )
+                .order_by(Ticket.updated_at.desc())  # type: ignore[attr-defined]
+            )
+        ).first()
+    return None
 
 
 async def append_reply(session: AsyncSession, ticket: Ticket, msg: dict[str, Any]) -> None:
@@ -201,7 +220,9 @@ async def ingest_inbox(session: AsyncSession, brand: Brand, *, limit: int = 25) 
             continue
         if await _seen(session, msg.get("external_id", "")):
             continue
-        existing = await _open_ticket_for_conversation(session, msg.get("conversation_id", ""))
+        existing = await _open_ticket_for_reply(
+            session, msg.get("conversation_id", ""), msg.get("from_email", "")
+        )
         if existing is not None:
             await append_reply(session, existing, msg)
             continue

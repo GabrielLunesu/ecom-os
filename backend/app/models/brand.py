@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID, uuid4
 
+from sqlalchemy import Column, Text
 from sqlmodel import Field
 
 from app.core.time import utcnow
@@ -44,6 +45,14 @@ class Store(QueryModel, table=True):
     provider: str = Field(default="direct")
     external_id: str = Field(default="")
     status: str = Field(default="disconnected", index=True)
+
+    # Store profile — real, operator-set facts the agent uses so it never
+    # hallucinates (public URL, support sender, tracking page, brand notes).
+    public_url: str = Field(default="")  # e.g. chicagooutletshop.com
+    support_email: str = Field(default="")
+    support_name: str = Field(default="")  # signature, e.g. "Chicago Outlet Support"
+    tracking_url: str = Field(default="")  # explicit tracking page; falls back to public_url
+    facts: str = Field(default="", sa_column=Column(Text))  # free-form brand facts
 
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)

@@ -81,10 +81,34 @@ def _fulfillment_phrase(order: dict[str, Any] | None) -> str:
 class FlowEngine:
     """Executes flows. Holds read+discount Shopify + the inbox — never a refund tool."""
 
-    def __init__(self, shopify: ShopifyConnector, inbox: InboxConnector, store_domain: str):
+    def __init__(
+        self,
+        shopify: ShopifyConnector,
+        inbox: InboxConnector,
+        store_domain: str,
+        *,
+        public_url: str = "",
+        support_name: str = "Support",
+        tracking_url: str = "",
+        facts: str = "",
+    ):
         self.shopify = shopify
         self.inbox = inbox
         self.store_domain = store_domain
+        # Operator-set store profile — the agent uses these real facts (no hallucination).
+        self.public_url = public_url
+        self.support_name = support_name or "Support"
+        self.profile_tracking_url = tracking_url
+        self.facts = facts
+
+    def _resolve_tracking_url(self, policy_body: str) -> str:
+        if self.profile_tracking_url:
+            return self.profile_tracking_url
+        if self.public_url:
+            base = self.public_url if self.public_url.startswith("http") else f"https://{self.public_url}"
+            return f"{base.rstrip('/')}/account"
+        m = re.search(r"https?://[^\s)]+", policy_body or "")
+        return m.group(0) if m else f"https://{self.store_domain}/account"
 
     # --- public entry points -------------------------------------------------
     async def run(self, session: AsyncSession, ticket: Ticket, flow: Flow) -> FlowOutcome:
@@ -183,8 +207,7 @@ class FlowEngine:
         doc = await get_document(session, slug)
         text = " ".join((doc.body if doc else "").replace("#", "").split())
         data["policy_excerpt"] = text[:320] + ("…" if len(text) > 320 else "")
-        m = re.search(r"https?://[^\s)]+", doc.body if doc else "")
-        data["tracking_url"] = m.group(0) if m else f"https://{self.store_domain}/account"
+        data["tracking_url"] = self._resolve_tracking_url(doc.body if doc else "")
         await self._evidence(session, ticket, "policy_cite", slug, {"slug": slug})
         await self._evidence(session, ticket, "tracking", data["tracking_url"], {"url": data["tracking_url"]})
         return FlowOutcome("continue")
@@ -238,7 +261,15 @@ class FlowEngine:
     async def _send(
         self, session: AsyncSession, ticket: Ticket, template: str, data: dict[str, Any]
     ) -> None:
-        body = _render(template, {"customer_name": (ticket.customer_name or "there").split(" ")[0], **data})
+        body = _render(
+            template,
+            {
+                "customer_name": (ticket.customer_name or "there").split(" ")[0],
+                "support_name": self.support_name,
+                "public_url": self.public_url,
+                **data,
+            },
+        )
         await self.inbox.send_message(
             to=ticket.customer_email,
             subject=f"Re: {ticket.subject}",
