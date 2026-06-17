@@ -159,11 +159,51 @@ async def put_store_profile(
     return StoreOut.model_validate(store, from_attributes=True)
 
 
+class ShopifyCredsIn(BaseModel):
+    client_id: str
+    client_secret: str
+
+
+@router.put("/stores/{store_id}/shopify-credentials", response_model=StoreOut)
+async def put_shopify_credentials(
+    store_id: UUID, payload: ShopifyCredsIn, session: AsyncSession = Depends(get_session)
+) -> StoreOut:
+    """Connect a store with its app's client id + secret. The app mints the Admin
+    API token via the client-credentials grant (no browser) and refreshes it. The
+    creds are stored encrypted (write-only); the token is never persisted."""
+    from app.models.brand import Store
+    from app.services.connectors.shopify_token import fetch_client_credentials_token
+
+    brand = await ensure_seed(session)
+    store = await session.get(Store, store_id)
+    if store is None:
+        raise HTTPException(status_code=404, detail="store not found")
+    # Validate by minting a token now; fail clearly if the creds/store don't qualify.
+    try:
+        await fetch_client_credentials_token(store.domain, payload.client_id, payload.client_secret)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=400,
+            detail=f"could not connect store ({type(exc).__name__}); check the client id/secret "
+            "and that the app is installed on this store",
+        ) from exc
+    await set_secret(session, brand, f"SHOPIFY_CLIENT_ID:{store.domain}", payload.client_id)
+    await set_secret(session, brand, f"SHOPIFY_CLIENT_SECRET:{store.domain}", payload.client_secret)
+    store.status = "connected"
+    session.add(store)
+    await session.commit()
+    await session.refresh(store)
+    return StoreOut.model_validate(store, from_attributes=True)
+
+
 @router.put("/stores/{store_id}/token", response_model=StoreOut)
 async def put_store_token(
     store_id: UUID, payload: SecretIn, session: AsyncSession = Depends(get_session)
 ) -> StoreOut:
-    """Set a store's Shopify token (encrypted) and mark it connected (Invariant 5)."""
+    """Set a store's Shopify token directly (encrypted) and mark it connected.
+
+    Most users instead set client id/secret via /shopify-credentials and the app
+    mints the token itself; this is the manual fallback for a static token."""
     from app.models.brand import Store
 
     brand = await ensure_seed(session)

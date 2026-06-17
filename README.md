@@ -113,13 +113,14 @@ indefinitely. Ask me for anything you need; never invent secrets. Report after e
    restart:unless-stopped. The Cloudflare Tunnel is OPTIONAL (only to open the dashboard from
    outside); the CS email loop runs server-side via Composio without it.
 
-3. Connect the providers. ASK me for my Composio API key, then set it via the dashboard Settings
-   (PUT /api/v1/ecom/settings/secrets/COMPOSIO_API_KEY, Bearer LOCAL_AUTH_TOKEN) — secrets are
-   write-only and encrypted at rest; never echo them. The Outlook inbox is already connected in
-   Composio. For each Shopify store, GRAB FRESH KEYS YOURSELF: add the store
-   (POST /api/v1/ecom/stores {domain}) and run the OAuth connect (scripts/bootstrap/shopify_oauth.py
-   via the tunnel/forwarded callback, or Composio's connect flow) — have me approve in my browser,
-   then store the per-store token. Do not ask me to paste a raw Shopify token.
+3. Connect the providers — all in the dashboard, no terminal secrets. ASK me for my Composio API
+   key and set it (PUT /api/v1/ecom/settings/secrets/COMPOSIO_API_KEY, Bearer LOCAL_AUTH_TOKEN);
+   secrets are write-only + encrypted at rest, never echo them. The Outlook inbox is already
+   connected in Composio. For each Shopify store: ASK me for that store's app **client id + client
+   secret** (all I can get from the app) and connect it
+   (PUT /api/v1/ecom/stores/{id}/shopify-credentials {client_id, client_secret}). The app mints and
+   refreshes the Admin API token itself via Shopify's **client-credentials grant** — no browser, no
+   raw token to paste. Add more stores with POST /api/v1/ecom/stores {domain} and connect each.
 
 4. Confirm connections. GET http://127.0.0.1:8080/api/v1/ecom/connections must show
    "ready": true (shopify + inbox). Fix before continuing.

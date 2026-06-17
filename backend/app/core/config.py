@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     shopify_access_token: str = ""
     shopify_refund_access_token: str = ""
     shopify_store_url: str = ""
+    # App client id/secret — the app mints the Admin API token via the
+    # client-credentials grant (no browser) and refreshes it every 24h.
+    shopify_client_id: str = ""
+    shopify_client_secret: str = ""
+    shopify_secret_key: str = ""
 
     # --- Ecom-OS agent runtime ---
     # CS_RUNTIME selects the brain: "" (deterministic) | "llm" | "hermes".

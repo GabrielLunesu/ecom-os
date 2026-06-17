@@ -16,8 +16,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.models.brand import Brand
 from app.models.secret_entry import SecretEntry
 from app.services import secret_store
-from app.services.connectors.secrets import ConnectionRef, resolve_secret
-from app.services.connectors.shopify_direct import DirectShopifyConnector
+from app.services.connectors.secrets import resolve_secret
 from app.services.secret_store import (
     get_cached,
     list_handles,
@@ -110,27 +109,36 @@ def test_resolve_secret_falls_back_to_cache(monkeypatch: pytest.MonkeyPatch) -> 
     assert secret.reveal() == PLAINTEXT
 
 
-def test_per_store_token_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
+def _no_client_creds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force the static-token path: no client-credentials anywhere + clear caches."""
     from app.core.config import settings
+    from app.services.connectors import shopify_token
 
+    monkeypatch.delenv("SHOPIFY_ACCESS_TOKEN", raising=False)
+    monkeypatch.setattr(settings, "shopify_access_token", "", raising=False)
+    for var in ("SHOPIFY_CLIENT_ID", "SHOPIFY_CLIENT_SECRET", "SHOPIFY_SECRET_KEY"):
+        monkeypatch.delenv(var, raising=False)
+        monkeypatch.setattr(settings, var.lower(), "", raising=False)
+    shopify_token._TOKEN_CACHE.clear()
+
+
+@pytest.mark.asyncio
+async def test_per_store_token_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.connectors.shopify_token import get_store_token
+
+    _no_client_creds(monkeypatch)
     domain = "store-x.myshopify.com"
-    monkeypatch.delenv("SHOPIFY_ACCESS_TOKEN", raising=False)
-    monkeypatch.setattr(settings, "shopify_access_token", "", raising=False)
-
-    # Per-store handle wins.
     secret_store._CACHE[f"SHOPIFY_ACCESS_TOKEN:{domain}"] = "per-store-token"
-    conn = DirectShopifyConnector(ConnectionRef(provider="direct", external_id=domain))
-    assert conn._token.reveal() == "per-store-token"  # noqa: SLF001
+    tok = await get_store_token(domain)
+    assert tok.reveal() == "per-store-token"  # per-store handle wins
 
 
-def test_per_store_falls_back_to_global(monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.core.config import settings
+@pytest.mark.asyncio
+async def test_per_store_falls_back_to_global(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services.connectors.shopify_token import get_store_token
 
+    _no_client_creds(monkeypatch)
     domain = "store-y.myshopify.com"
-    monkeypatch.delenv("SHOPIFY_ACCESS_TOKEN", raising=False)
-    monkeypatch.setattr(settings, "shopify_access_token", "", raising=False)
-
-    # No per-store handle set -> falls back to the global token.
     secret_store._CACHE["SHOPIFY_ACCESS_TOKEN"] = "global-token"
-    conn = DirectShopifyConnector(ConnectionRef(provider="direct", external_id=domain))
-    assert conn._token.reveal() == "global-token"  # noqa: SLF001
+    tok = await get_store_token(domain)
+    assert tok.reveal() == "global-token"  # falls back to the global static token

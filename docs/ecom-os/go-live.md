@@ -25,11 +25,11 @@ CS_RUNTIME=flow                 # safe deterministic flows for the first run
 POSTGRES_PASSWORD=<strong password>
 COMPOSIO_API_KEY=<your Composio key>
 SHOPIFY_STORE_URL=stv0xe-c4.myshopify.com
-SHOPIFY_ACCESS_TOKEN=<your shpat_ token>
 # TUNNEL_TOKEN= (leave empty for now)
 ```
-(You can also leave the keys empty and set them later in the dashboard — but for the first boot
-`up.sh` requires COMPOSIO_API_KEY + SHOPIFY_STORE_URL, so set at least those.)
+No Shopify token here — you connect Shopify in step 4b with your app's **client id + client
+secret**, and the app mints + refreshes the Admin API token itself. (You can set the Composio key
++ Shopify creds entirely in the dashboard Settings instead of `.env` if you prefer.)
 
 ## 3. Launch
 ```bash
@@ -37,9 +37,21 @@ SHOPIFY_ACCESS_TOKEN=<your shpat_ token>
 ```
 Expect: `✓ Ecom-OS is up.`
 
-## 4. Confirm both providers are live
+## 4a. Connect Shopify (client id + secret — no browser, no token)
 ```bash
 T=$(grep '^LOCAL_AUTH_TOKEN=' .env | cut -d= -f2-)
+SID=$(curl -s -H "Authorization: Bearer $T" http://127.0.0.1:8080/api/v1/ecom/stores \
+      | python3 -c "import sys,json;print(json.load(sys.stdin)[0]['id'])")
+curl -s -X PUT -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
+  -d '{"client_id":"<your app client id>","client_secret":"<your app client secret>"}' \
+  http://127.0.0.1:8080/api/v1/ecom/stores/$SID/shopify-credentials
+```
+The app exchanges the client id/secret for a 24h Admin API token (Shopify client-credentials
+grant) and refreshes it automatically. In the dashboard, this is the **Connect** button on the
+store row. (Requires an app you developed, installed on your own store.)
+
+## 4b. Confirm both providers are live
+```bash
 curl -s -H "Authorization: Bearer $T" http://127.0.0.1:8080/api/v1/ecom/connections
 ```
 Expect `"ready": true` (shopify + inbox connected).

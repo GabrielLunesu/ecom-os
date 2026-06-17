@@ -13,10 +13,10 @@ from typing import Any
 import httpx
 
 from .base import ShopifyConnector
-from .secrets import ConnectionRef, SecretResolutionError, env_or_setting, resolve_secret
+from .secrets import ConnectionRef, env_or_setting
+from .shopify_token import get_store_token
 
 API_VERSION = "2025-01"
-TOKEN_HANDLE = "SHOPIFY_ACCESS_TOKEN"
 _TIMEOUT = httpx.Timeout(30.0)
 
 
@@ -39,12 +39,6 @@ class DirectShopifyConnector(ShopifyConnector):
         super().__init__(ref)
         # ref.external_id is the (non-secret) store domain, e.g. *.myshopify.com.
         self._domain = ref.external_id
-        # Per-store token first (multi-store), then the global handle (single-store
-        # env setups keep working).
-        try:
-            self._token = resolve_secret(f"{TOKEN_HANDLE}:{self._domain}")
-        except SecretResolutionError:
-            self._token = resolve_secret(TOKEN_HANDLE)
 
     @classmethod
     def from_env(cls) -> "DirectShopifyConnector":
@@ -53,26 +47,28 @@ class DirectShopifyConnector(ShopifyConnector):
             raise RuntimeError("SHOPIFY_STORE_URL is not set")
         return cls(ConnectionRef(provider="direct", external_id=domain))
 
-    def _client(self) -> httpx.AsyncClient:
-        # The token is revealed only here, into the request header.
+    async def _client(self) -> httpx.AsyncClient:
+        # Resolve a valid token per request (client-credentials, cached + refreshed,
+        # or static). Revealed only here, into the request header (Invariant 5).
+        token = await get_store_token(self._domain)
         return httpx.AsyncClient(
             base_url=f"https://{self._domain}/admin/api/{API_VERSION}",
             headers={
-                "X-Shopify-Access-Token": self._token.reveal(),
+                "X-Shopify-Access-Token": token.reveal(),
                 "Content-Type": "application/json",
             },
             timeout=_TIMEOUT,
         )
 
     async def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        async with self._client() as client:
+        async with await self._client() as client:
             resp = await client.get(path, params=params)
             resp.raise_for_status()
             body: dict[str, Any] = resp.json()
             return body
 
     async def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
-        async with self._client() as client:
+        async with await self._client() as client:
             resp = await client.post(path, json=payload)
             resp.raise_for_status()
             body: dict[str, Any] = resp.json()
@@ -125,7 +121,7 @@ class DirectShopifyConnector(ShopifyConnector):
         path = "/orders.json"
         # Follow Shopify cursor pagination (Link header) up to a sane page cap.
         for _ in range(20):
-            async with self._client() as client:
+            async with await self._client() as client:
                 resp = await client.get(path, params=params)
                 resp.raise_for_status()
                 body: dict[str, Any] = resp.json()

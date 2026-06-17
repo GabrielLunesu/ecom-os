@@ -19,11 +19,11 @@ import { cn } from "@/lib/utils";
 import { listContainer, listItem } from "@/lib/design/tokens";
 import {
   addStore,
+  connectShopify,
   deleteSecret,
   removeStore,
   setSecret,
   setStoreProfile,
-  setStoreToken,
   useConnections,
   useSecretsStatus,
   useStores,
@@ -154,17 +154,15 @@ function SecretRow({
   );
 }
 
-function StoreTokenForm({ store }: { store: EcomStore }) {
+function ShopifyConnectForm({ store }: { store: EcomStore }) {
   const qc = useQueryClient();
-  const [value, setValue] = useState("");
-  const [saved, setSaved] = useState(false);
-
-  const save = useMutation({
-    mutationFn: () => setStoreToken(store.id, value),
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const connect = useMutation({
+    mutationFn: () => connectShopify(store.id, clientId.trim(), clientSecret.trim()),
     onSuccess: () => {
-      setValue("");
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
+      setClientId("");
+      setClientSecret("");
       qc.invalidateQueries({ queryKey: ["ecom", "stores"] });
       qc.invalidateQueries({ queryKey: ["ecom", "connections"] });
     },
@@ -172,29 +170,44 @@ function StoreTokenForm({ store }: { store: EcomStore }) {
 
   return (
     <form
-      className="flex items-center gap-2"
+      className="flex flex-wrap items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault();
-        if (value) save.mutate();
+        if (clientId.trim() && clientSecret.trim()) connect.mutate();
       }}
     >
       <input
+        type="text"
+        autoComplete="off"
+        placeholder="Client ID"
+        value={clientId}
+        onChange={(e) => setClientId(e.target.value)}
+        className={cn(inputCls, "h-8 w-36 text-xs")}
+      />
+      <input
         type="password"
         autoComplete="off"
-        placeholder="Set Shopify token"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        className={cn(inputCls, "h-8 w-44 text-xs")}
+        placeholder="Client secret"
+        value={clientSecret}
+        onChange={(e) => setClientSecret(e.target.value)}
+        className={cn(inputCls, "h-8 w-36 text-xs")}
       />
-      <Button type="submit" size="sm" disabled={!value || save.isPending}>
-        {save.isPending ? (
+      <Button
+        type="submit"
+        size="sm"
+        disabled={!clientId.trim() || !clientSecret.trim() || connect.isPending}
+      >
+        {connect.isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
-        ) : saved ? (
-          <Check className="h-4 w-4" />
+        ) : store.status === "connected" ? (
+          "Reconnect"
         ) : (
-          "Save"
+          "Connect"
         )}
       </Button>
+      {connect.isError ? (
+        <span className="text-xs text-[color:var(--danger)]">couldn&apos;t connect</span>
+      ) : null}
     </form>
   );
 }
@@ -347,7 +360,7 @@ function StoreRow({ store, first }: { store: EcomStore; first: boolean }) {
       <Button type="button" size="sm" variant="secondary" onClick={() => setEditing((v) => !v)}>
         {editing ? "Close" : "Edit profile"}
       </Button>
-      <StoreTokenForm store={store} />
+      <ShopifyConnectForm store={store} />
       <Button
         type="button"
         size="sm"

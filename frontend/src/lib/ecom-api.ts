@@ -40,6 +40,20 @@ export const setStoreProfile = async (
     })
   ).data;
 
+/** Connect a store with its app's client id + secret. The app mints + refreshes
+ * the Admin API token via the client-credentials grant (no browser, no raw token). */
+export const connectShopify = async (
+  id: string,
+  client_id: string,
+  client_secret: string,
+): Promise<EcomStore> =>
+  (
+    await customFetch<Wrapped<EcomStore>>(
+      `/api/v1/ecom/stores/${id}/shopify-credentials`,
+      { method: "PUT", body: JSON.stringify({ client_id, client_secret }) },
+    )
+  ).data;
+
 export type ProviderHealth = {
   provider: string;
   connected: boolean;

@@ -30,8 +30,17 @@ TOKEN = "shpat_supersecrettoken_should_never_leak"
 
 @pytest.fixture
 def shopify_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import settings
+    from app.services.connectors import shopify_token
+
     monkeypatch.setenv("SHOPIFY_ACCESS_TOKEN", TOKEN)
     monkeypatch.setenv("SHOPIFY_STORE_URL", "stv0xe-c4.myshopify.com")
+    # Force the static-token path (no network): clear client-credentials from BOTH
+    # the environment and Settings (which loads .env), plus the token cache.
+    for var in ("SHOPIFY_CLIENT_ID", "SHOPIFY_CLIENT_SECRET", "SHOPIFY_SECRET_KEY"):
+        monkeypatch.delenv(var, raising=False)
+        monkeypatch.setattr(settings, var.lower(), "", raising=False)
+    shopify_token._TOKEN_CACHE.clear()
 
 
 # --- Invariant 5: no secret logged or returned in plaintext ----------------
@@ -55,10 +64,20 @@ def test_secret_not_exposed_via_json_or_dict() -> None:
 
 def test_connector_repr_does_not_leak_token(shopify_env: None) -> None:
     conn = DirectShopifyConnector.from_env()
+    # The connector holds only the (non-secret) domain — the token is resolved
+    # per-request as a Secret and never stored on the instance.
     assert TOKEN not in repr(conn)
     assert TOKEN not in str(vars(conn))
-    # The token is held as a Secret, not a bare string.
-    assert isinstance(conn._token, Secret)  # noqa: SLF001 - asserting internal safety
+
+
+@pytest.mark.asyncio
+async def test_token_resolves_to_redacted_secret(shopify_env: None) -> None:
+    from app.services.connectors.shopify_token import get_store_token
+
+    tok = await get_store_token("stv0xe-c4.myshopify.com")
+    assert isinstance(tok, Secret)
+    assert TOKEN not in repr(tok)
+    assert tok.reveal() == TOKEN  # static fallback path
 
 
 def test_resolve_secret_missing_raises(monkeypatch: pytest.MonkeyPatch) -> None:
