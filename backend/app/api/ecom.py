@@ -278,3 +278,57 @@ async def reject_refund_ep(
 
     req = await reject_refund(session, refund_id, "operator")
     return RefundOut.model_validate(req, from_attributes=True)
+
+
+# --- Agents (templates + config) ---
+class AgentOut(BaseModel):
+    id: UUID
+    template: str
+    name: str
+    voice: str
+    sops: str
+    allowed_tools: list[str] | None
+    schedule: str
+    enabled: bool
+
+
+class AgentIn(BaseModel):
+    voice: str
+    sops: str
+    schedule: str
+    enabled: bool
+
+
+@router.get("/agents/templates")
+async def get_agent_templates() -> list[dict[str, object]]:
+    from app.services.agents_config import list_templates
+
+    return list_templates()
+
+
+@router.get("/agents", response_model=list[AgentOut])
+async def get_agents(session: AsyncSession = Depends(get_session)) -> list[AgentOut]:
+    from app.services.agents_config import ensure_seed_agents, list_agents
+
+    brand = await ensure_seed(session)
+    await ensure_seed_agents(session, brand)
+    return [AgentOut.model_validate(a, from_attributes=True) for a in await list_agents(session)]
+
+
+@router.put("/agents/{agent_id}", response_model=AgentOut)
+async def put_agent(
+    agent_id: UUID, payload: AgentIn, session: AsyncSession = Depends(get_session)
+) -> AgentOut:
+    from app.services.agents_config import update_agent
+
+    agent = await update_agent(
+        session,
+        agent_id,
+        voice=payload.voice,
+        sops=payload.sops,
+        schedule=payload.schedule,
+        enabled=payload.enabled,
+    )
+    if agent is None:
+        raise HTTPException(status_code=404, detail="agent not found")
+    return AgentOut.model_validate(agent, from_attributes=True)

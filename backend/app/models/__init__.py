@@ -2,6 +2,7 @@
 
 from app.models.activity_events import ActivityEvent
 from app.models.agents import Agent
+from app.models.agent_config import AgentConfig
 from app.models.brand import Brand, Store
 from app.models.refunds import RefundRequest
 from app.models.tickets import Ticket, TicketAudit, TicketEvidence, TicketMessage
@@ -45,6 +46,7 @@ __all__ = [
     "TicketEvidence",
     "TicketAudit",
     "RefundRequest",
+    "AgentConfig",
     "ApprovalTaskLink",
     "Approval",
     "BoardGroupMemory",

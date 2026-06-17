@@ -144,6 +144,51 @@ export function useTickets() {
   return useQuery({ queryKey: ["ecom", "tickets"], queryFn: fetchTickets, staleTime: 10_000 });
 }
 
+// --- Agents ---
+export type AgentTemplate = {
+  template: string;
+  name: string;
+  description: string;
+  default_tools: string[];
+};
+export type AgentConfig = {
+  id: string;
+  template: string;
+  name: string;
+  voice: string;
+  sops: string;
+  allowed_tools: string[] | null;
+  schedule: string;
+  enabled: boolean;
+};
+
+export const fetchAgentTemplates = async (): Promise<AgentTemplate[]> =>
+  (await customFetch<Wrapped<AgentTemplate[]>>("/api/v1/ecom/agents/templates", { method: "GET" }))
+    .data;
+
+export const fetchAgents = async (): Promise<AgentConfig[]> =>
+  (await customFetch<Wrapped<AgentConfig[]>>("/api/v1/ecom/agents", { method: "GET" })).data;
+
+export const saveAgent = async (
+  id: string,
+  payload: { voice: string; sops: string; schedule: string; enabled: boolean },
+): Promise<AgentConfig> =>
+  (await customFetch<Wrapped<AgentConfig>>(`/api/v1/ecom/agents/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })).data;
+
+export function useAgents() {
+  return useQuery({ queryKey: ["ecom", "agents"], queryFn: fetchAgents, staleTime: 30_000 });
+}
+export function useAgentTemplates() {
+  return useQuery({
+    queryKey: ["ecom", "agent-templates"],
+    queryFn: fetchAgentTemplates,
+    staleTime: 300_000,
+  });
+}
+
 export function useStores() {
   return useQuery({
     queryKey: ["ecom", "stores"],
