@@ -80,13 +80,29 @@ class ConnectionRef:
             raise ValueError("connection reference requires an external_id")
 
 
+def env_or_setting(name: str) -> str:
+    """Read a config value by env-var NAME, falling back to pydantic Settings.
+
+    The process environment wins (docker / shell / test monkeypatch); otherwise we
+    consult Settings, which loads from `.env` in local runs. The name itself is not
+    a secret, so this is safe.
+    """
+    raw = os.environ.get(name)
+    if raw:
+        return raw
+    # Avoid a circular import at module load.
+    from app.core.config import settings
+
+    return str(getattr(settings, name.lower(), "") or "")
+
+
 def resolve_secret(handle: str) -> Secret:
-    """Resolve an environment handle (e.g. "SHOPIFY_ACCESS_TOKEN") to a Secret.
+    """Resolve a credential handle (e.g. "SHOPIFY_ACCESS_TOKEN") to a Secret.
 
     The handle is a *name*, not the value — it is safe to store/log. The value is
-    pulled from the process environment (or a secret store) at call time only.
+    pulled from the environment / Settings at call time only, never persisted.
     """
-    raw = os.environ.get(handle)
+    raw = env_or_setting(handle)
     if not raw:
         raise SecretResolutionError(
             f"no secret available for handle {handle!r}; connect the provider first",

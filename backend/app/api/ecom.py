@@ -6,11 +6,16 @@ Responses carry provider/status only; never secrets (Invariant 5).
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import require_user_auth
+from app.db.session import get_session
 from app.services.connection_health import connections_status
+from app.services.stores import ensure_seed, list_stores
 
 router = APIRouter(prefix="/ecom", tags=["ecom"], dependencies=[Depends(require_user_auth)])
 
@@ -31,3 +36,19 @@ async def get_connections() -> ConnectionsOut:
     """Live connection health for Shopify + the support inbox (Build Spec §1.5)."""
     status = await connections_status()
     return ConnectionsOut.model_validate(status)
+
+
+class StoreOut(BaseModel):
+    id: UUID
+    name: str
+    domain: str
+    provider: str
+    status: str
+
+
+@router.get("/stores", response_model=list[StoreOut])
+async def get_stores(session: AsyncSession = Depends(get_session)) -> list[StoreOut]:
+    """List the brand's stores (connection refs only — never secrets)."""
+    await ensure_seed(session)
+    stores = await list_stores(session)
+    return [StoreOut.model_validate(s, from_attributes=True) for s in stores]

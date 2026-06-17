@@ -11,10 +11,9 @@ the boundary and the approval gate first (tests-first).
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
-from .secrets import ConnectionRef, Secret, resolve_secret
+from .secrets import ConnectionRef, Secret, env_or_setting, resolve_secret
 
 # Distinct handle so the refund path uses its own scoped connection. In production
 # this is a second Shopify app limited to write_orders; see docs/ecom-os/bootstrap.md.
@@ -43,7 +42,7 @@ class RefundExecutor:
 
     @classmethod
     def from_env(cls) -> "RefundExecutor":
-        domain = os.environ.get("SHOPIFY_STORE_URL", "")
+        domain = env_or_setting("SHOPIFY_STORE_URL")
         if not domain:
             raise RuntimeError("SHOPIFY_STORE_URL is not set")
         return cls(ConnectionRef(provider="direct", external_id=domain))

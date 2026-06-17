@@ -62,7 +62,11 @@ def test_connector_repr_does_not_leak_token(shopify_env: None) -> None:
 
 
 def test_resolve_secret_missing_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    # No secret in env AND none configured in Settings -> must raise.
+    from app.core.config import settings
+
     monkeypatch.delenv("SHOPIFY_ACCESS_TOKEN", raising=False)
+    monkeypatch.setattr(settings, "shopify_access_token", "")
     with pytest.raises(SecretResolutionError):
         resolve_secret("SHOPIFY_ACCESS_TOKEN")
 

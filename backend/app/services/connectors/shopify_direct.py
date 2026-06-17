@@ -8,13 +8,12 @@ future `ComposioShopifyConnector` behind the `ShopifyConnector` interface.
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 import httpx
 
 from .base import ShopifyConnector
-from .secrets import ConnectionRef, resolve_secret
+from .secrets import ConnectionRef, env_or_setting, resolve_secret
 
 API_VERSION = "2025-01"
 TOKEN_HANDLE = "SHOPIFY_ACCESS_TOKEN"
@@ -32,7 +31,7 @@ class DirectShopifyConnector(ShopifyConnector):
 
     @classmethod
     def from_env(cls) -> "DirectShopifyConnector":
-        domain = os.environ.get("SHOPIFY_STORE_URL", "")
+        domain = env_or_setting("SHOPIFY_STORE_URL")
         if not domain:
             raise RuntimeError("SHOPIFY_STORE_URL is not set")
         return cls(ConnectionRef(provider="direct", external_id=domain))

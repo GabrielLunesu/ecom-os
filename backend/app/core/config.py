@@ -52,6 +52,13 @@ class Settings(BaseSettings):
     cors_origins: str = ""
     base_url: str = ""
 
+    # --- Ecom-OS connectors (resolved as Secrets; never logged) ---
+    # Loaded from the environment / .env so they work in docker and local runs.
+    composio_api_key: str = ""
+    shopify_access_token: str = ""
+    shopify_refund_access_token: str = ""
+    shopify_store_url: str = ""
+
     # Security response headers (set to blank to disable a specific header)
     security_header_x_content_type_options: str = "nosniff"
     security_header_x_frame_options: str = "DENY"

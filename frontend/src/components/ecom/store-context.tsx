@@ -9,13 +9,13 @@ import {
   type ReactNode,
 } from "react";
 
+import { useStores } from "@/lib/ecom-api";
+
 /**
  * Global store-scope state for the whole app: the active Shopify store, or the
  * "All stores" aggregate. One brand, many stores (Build Spec §1). Every data
- * surface reads `activeStoreId` to scope its queries.
- *
- * Slice 1 seeds a static list; Slice 2 replaces `useSeedStores()` with the
- * backend stores endpoint (Composio/connection refs). The shape stays the same.
+ * surface reads `activeStoreId` to scope its queries. Stores come from the
+ * backend `/ecom/stores` endpoint (connection refs only).
  */
 export type Store = {
   id: string;
@@ -38,18 +38,18 @@ const StoreContext = createContext<StoreContextValue | null>(null);
 
 const STORAGE_KEY = "ecom_active_store";
 
-// Seed list until Slice 2 wires the backend stores endpoint.
-const SEED_STORES: Store[] = [
-  { id: "chicago-outlet", name: "Chicago Outlet", domain: "stv0xe-c4.myshopify.com" },
-];
-
 function readInitial(): StoreScope {
   if (typeof window === "undefined") return ALL_STORES;
   return window.localStorage.getItem(STORAGE_KEY) ?? ALL_STORES;
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [stores] = useState<Store[]>(SEED_STORES);
+  const { data } = useStores();
+  const stores: Store[] = useMemo(
+    () =>
+      (data ?? []).map((s) => ({ id: s.id, name: s.name, domain: s.domain })),
+    [data],
+  );
   const [activeStoreId, setActiveStoreIdState] = useState<StoreScope>(readInitial);
 
   const setActiveStoreId = useCallback((id: StoreScope) => {
