@@ -299,6 +299,19 @@ class AgentIn(BaseModel):
     enabled: bool
 
 
+class ChatIn(BaseModel):
+    message: str
+
+
+@router.post("/chat")
+async def post_chat(payload: ChatIn, session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+    """Read-only copilot over Shopify + vault (Build Spec §7.4). No writes."""
+    from app.services.chat import answer
+
+    await ensure_seed(session)
+    return await answer(session, payload.message)
+
+
 @router.get("/agents/templates")
 async def get_agent_templates() -> list[dict[str, object]]:
     from app.services.agents_config import list_templates

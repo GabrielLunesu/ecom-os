@@ -181,6 +181,16 @@ export const saveAgent = async (
 export function useAgents() {
   return useQuery({ queryKey: ["ecom", "agents"], queryFn: fetchAgents, staleTime: 30_000 });
 }
+
+// --- Chat (read-only copilot) ---
+export type ChatSource = { type: string; ref: string };
+export type ChatResponse = { answer: string; sources: ChatSource[] };
+
+export const sendChat = async (message: string): Promise<ChatResponse> =>
+  (await customFetch<Wrapped<ChatResponse>>("/api/v1/ecom/chat", {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  })).data;
 export function useAgentTemplates() {
   return useQuery({
     queryKey: ["ecom", "agent-templates"],
