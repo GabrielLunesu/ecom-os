@@ -103,6 +103,47 @@ export function useVaultDocs() {
   });
 }
 
+// --- Tickets / CS ---
+export type Ticket = {
+  id: string;
+  subject: string;
+  customer_email: string;
+  customer_name: string;
+  status: string;
+  channel: string;
+  created_at: string;
+  updated_at: string;
+};
+export type TicketMessage = {
+  direction: string;
+  author: string;
+  body: string;
+  untrusted: boolean;
+  created_at: string;
+};
+export type TicketEvidence = { kind: string; summary: string; created_at: string };
+export type TicketDetail = Ticket & {
+  messages: TicketMessage[];
+  evidence: TicketEvidence[];
+};
+
+export const fetchTickets = async (): Promise<Ticket[]> =>
+  (await customFetch<Wrapped<Ticket[]>>("/api/v1/ecom/tickets", { method: "GET" })).data;
+
+export const fetchTicket = async (id: string): Promise<TicketDetail> =>
+  (await customFetch<Wrapped<TicketDetail>>(`/api/v1/ecom/tickets/${id}`, { method: "GET" }))
+    .data;
+
+export const runCsLoop = async (): Promise<{ ingested: number; handled: number }> =>
+  (await customFetch<Wrapped<{ ingested: number; handled: number }>>(
+    "/api/v1/ecom/cs/run",
+    { method: "POST", body: "{}" },
+  )).data;
+
+export function useTickets() {
+  return useQuery({ queryKey: ["ecom", "tickets"], queryFn: fetchTickets, staleTime: 10_000 });
+}
+
 export function useStores() {
   return useQuery({
     queryKey: ["ecom", "stores"],

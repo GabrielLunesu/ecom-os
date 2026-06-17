@@ -16,7 +16,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.time import utcnow
 from app.models.brand import Brand
-from app.models.tickets import Ticket, TicketAudit, TicketMessage
+from app.models.tickets import Ticket, TicketAudit, TicketEvidence, TicketMessage
 from app.services.connectors.composio_inbox import (
     ComposioInboxConnector,
     discover_active_mail_account,
@@ -124,6 +124,18 @@ async def ticket_messages(session: AsyncSession, ticket_id: UUID) -> list[Ticket
                 select(TicketMessage)
                 .where(TicketMessage.ticket_id == ticket_id)
                 .order_by(TicketMessage.created_at)  # type: ignore[arg-type]
+            )
+        ).all()
+    )
+
+
+async def ticket_evidence(session: AsyncSession, ticket_id: UUID) -> list[TicketEvidence]:
+    return list(
+        (
+            await session.exec(
+                select(TicketEvidence)
+                .where(TicketEvidence.ticket_id == ticket_id)
+                .order_by(TicketEvidence.created_at)  # type: ignore[arg-type]
             )
         ).all()
     )

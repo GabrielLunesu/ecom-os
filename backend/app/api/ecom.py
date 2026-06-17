@@ -24,6 +24,7 @@ from app.services.tickets import (
     get_ticket,
     ingest_inbox,
     list_tickets,
+    ticket_evidence,
     ticket_messages,
 )
 from app.services.vault import (
@@ -157,8 +158,15 @@ class TicketMessageOut(BaseModel):
     created_at: datetime
 
 
+class TicketEvidenceOut(BaseModel):
+    kind: str
+    summary: str
+    created_at: datetime
+
+
 class TicketDetailOut(TicketOut):
     messages: list[TicketMessageOut]
+    evidence: list[TicketEvidenceOut]
 
 
 @router.get("/tickets", response_model=list[TicketOut])
@@ -175,9 +183,11 @@ async def get_ticket_detail(
     if ticket is None:
         raise HTTPException(status_code=404, detail="ticket not found")
     msgs = await ticket_messages(session, ticket_id)
+    ev = await ticket_evidence(session, ticket_id)
     return TicketDetailOut(
         **TicketOut.model_validate(ticket, from_attributes=True).model_dump(),
         messages=[TicketMessageOut.model_validate(m, from_attributes=True) for m in msgs],
+        evidence=[TicketEvidenceOut.model_validate(e, from_attributes=True) for e in ev],
     )
 
 
