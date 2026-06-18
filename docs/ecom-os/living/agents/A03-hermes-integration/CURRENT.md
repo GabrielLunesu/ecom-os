@@ -19,7 +19,7 @@ channel/cron delivery, capability negotiation, and A02 trace correlation.
 
 ## Ownership
 
-**Owns:** `backend/app/hermes/**` (to be created), `backend/app/tools/**` canonical tool
+**Owns:** `backend/app/hermes/**`, `backend/app/tools/**` canonical tool
 catalog framework, `hermes-integration/**` adapter/conformance, `HermesBridge`,
 `BackgroundRunPort`, capability probe/compatibility record, MCP server schema generation,
 session-reference mapping, frontend `/chat` and `/agents`, channel/cron transport contracts
@@ -113,7 +113,7 @@ mutator + design primitives (`components/ui/`) present.
 **Classification:** chat/agents pages are `obsolete-as-architecture` mock scaffolds; rebuilt
 on the real Hermes-session transport using A06 primitives and the proven SSE pattern.
 
-## Implemented v2 (this branch, not yet committed)
+## Implemented v2 (committed at `5f971a7`)
 
 Both modules are pure-Python, no DB migration, fixture-driven (Operating Protocol §7); ruff
 + mypy clean; 33 new tests pass.
