@@ -42,11 +42,16 @@ esac
 [ "$missing" -eq 0 ] || { err "fix the missing config above, then re-run"; exit 1; }
 
 PROFILE=()
+QUICK=0
+case "${QUICK_TUNNEL:-}" in 1|true|yes) QUICK=1 ;; esac
 if [ -n "${TUNNEL_TOKEN:-}" ]; then
   PROFILE=(--profile tunnel)
-  ok "Cloudflare Tunnel enabled"
+  ok "Cloudflare Tunnel enabled (your hostname)"
+elif [ "$QUICK" = 1 ]; then
+  PROFILE=(--profile quicktunnel)
+  ok "Cloudflare Quick Tunnel enabled (free public URL, no domain)"
 else
-  info "TUNNEL_TOKEN unset — running locally on http://127.0.0.1:${PROXY_PORT:-8080} (set TUNNEL_TOKEN for a public HTTPS hostname)"
+  info "No tunnel — running locally on http://127.0.0.1:${PROXY_PORT:-8080} (set QUICK_TUNNEL=1 for a free public URL, or TUNNEL_TOKEN for your own domain)"
 fi
 
 info "Building + starting the stack…"
@@ -60,6 +65,17 @@ for _ in $(seq 1 60); do
     ok "Ecom-OS is up."
     info "Local:  http://127.0.0.1:${PROXY_PORT:-8080}"
     [ -n "${TUNNEL_TOKEN:-}" ] && info "Public: your Cloudflare Tunnel hostname (routes to http://proxy:80)"
+    if [ "$QUICK" = 1 ]; then
+      info "Fetching the free public URL…"
+      PUB=""
+      for _ in $(seq 1 20); do
+        PUB="$(docker compose -f compose.yml -f compose.prod.yml logs quick-tunnel 2>/dev/null \
+               | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1)"
+        [ -n "$PUB" ] && break
+        sleep 2
+      done
+      [ -n "$PUB" ] && ok "Public URL: ${PUB}" || info "Public URL not ready yet — run ./scripts/deploy/tunnel-url.sh"
+    fi
     info "Connections + CS readiness: GET /api/v1/ecom/connections (authed)"
     exit 0
   fi

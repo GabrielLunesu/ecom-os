@@ -140,10 +140,16 @@ indefinitely. Ask me for anything you need; never invent secrets. Report after e
    pull the latest, rebuild, and migrate in place — data and config are preserved. Compare your
    running version (GET /api/v1/ecom/version) to origin and update when behind.
 
-8. (After the test passes) Expose the dashboard via a Cloudflare Tunnel (route the hostname to
-   http://proxy:80, set TUNNEL_TOKEN + BASE_URL + CORS_ORIGINS, re-run up.sh with the tunnel). Then
-   upgrade the brain: set CS_RUNTIME=hermes and point your `cs` profile at the MCP server
-   (`python -m app.mcp_server`, toolset `mcp-ecom-os`, read + discount tools only). For
+8. Expose the dashboard publicly — FREE, no domain, no account. Do NOT ask me for a domain or
+   tunnel token. Run `QUICK_TUNNEL=1 ./scripts/deploy/up.sh` (a Cloudflare Quick Tunnel) and read
+   the public `https://<random>.trycloudflare.com` URL from the output (or `./scripts/deploy/tunnel-url.sh`);
+   give me that URL — I log in with the LOCAL_AUTH_TOKEN. (The URL changes if it restarts; that's
+   fine. A private option instead: `ssh -L 8080:127.0.0.1:8080 <user>@<vps>` → http://localhost:8080.
+   Only if I later give you my own domain + TUNNEL_TOKEN, use the stable named tunnel.) That public
+   URL is also what realtime needs: set BASE_URL=<that URL> + CORS_ORIGINS=<that URL>, re-run up.sh,
+   then POST /api/v1/ecom/realtime/enable and set my Composio project webhook URL from
+   GET /api/v1/ecom/realtime. Keep CS_RUNTIME=flow unless I ask to upgrade the brain to `hermes`
+   (LLM via the MCP server, read + discount tools only). For
    instant (not 2-min-poll) handling, POST /api/v1/ecom/realtime/enable and set my Composio
    project webhook URL to the value from GET /api/v1/ecom/realtime.
 

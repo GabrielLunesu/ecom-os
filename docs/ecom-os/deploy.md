@@ -41,6 +41,22 @@ the bundled MCP server (`python -m app.mcp_server`, read + discount tools only �
 and registers a `cronjob` to run the loop continuously. See
 [`docs/ecom-os/hermes.md`](./hermes.md).
 
+## Expose it for free (no domain)
+
+Don't want to buy a domain? Run a **Cloudflare Quick Tunnel** — free, no account, no token,
+HTTPS included, and the agent can do it itself:
+
+```bash
+QUICK_TUNNEL=1 ./scripts/deploy/up.sh      # prints a https://<random>.trycloudflare.com URL
+./scripts/deploy/tunnel-url.sh               # re-print the current URL
+```
+
+Open that URL and log in with `LOCAL_AUTH_TOKEN`. The URL changes if the tunnel restarts
+(fine for a dashboard). For a **stable** hostname later, buy a cheap domain and use the
+named tunnel (`TUNNEL_TOKEN`). A purely private option: `ssh -L 8080:127.0.0.1:8080 <user>@<vps>`
+then open http://localhost:8080. **Realtime** needs a public URL — set `BASE_URL` to the
+tunnel URL, re-run `up.sh`, then enable it in Settings -> Realtime.
+
 ## Optional: Vercel frontend
 
 If you want a CDN/custom-domain marketing-grade frontend, you can instead deploy `frontend/` to a

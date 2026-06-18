@@ -60,5 +60,18 @@ services:
     profiles:
       - tunnel
 
+  # Free public HTTPS URL with NO domain, NO account, NO token — a Cloudflare
+  # "quick tunnel". Prints a https://<random>.trycloudflare.com URL in its logs.
+  # The URL changes if it restarts (fine for a dashboard). Enable with the
+  # `quicktunnel` profile (./scripts/deploy/up.sh with QUICK_TUNNEL=1).
+  quick-tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --url http://proxy:80
+    depends_on:
+      - proxy
+    profiles:
+      - quicktunnel
+
 volumes:
   caddy_data:
