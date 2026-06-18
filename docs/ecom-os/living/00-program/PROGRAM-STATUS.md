@@ -3,7 +3,7 @@ owner: A00
 baseline_commit: 3909904580732c27a9c6821ef44487c706d6a180
 coordination_branch: agent/a00-orchestrator
 published_alias: coordination/program
-last_verified_against: 3909904580732c27a9c6821ef44487c706d6a180
+last_verified_against: b483853d9f613edae793950cc5bdc9496ba741a2
 ---
 
 # Programme Status
