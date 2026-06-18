@@ -2,6 +2,7 @@
 owner: A00
 baseline_commit: 3909904580732c27a9c6821ef44487c706d6a180
 coordination_branch: agent/a00-orchestrator
+published_alias: coordination/program
 last_verified_against: 3909904580732c27a9c6821ef44487c706d6a180
 ---
 
@@ -14,7 +15,7 @@ docs; every builder `CURRENT.md` and `INTERFACES.md`; and
 
 | Agent | Canonical branch in prompts/docs | Observed local branch | Reported status | Current deliverable | Open blocker | Ready evidence |
 |---|---|---|---|---|---|---|
-| A00 | `coordination/program` | `agent/a00-orchestrator` | discovery | Programme baseline and audit queue | Branch name mismatch remains in this branch's normative parallel docs; `origin/main` launch cards confirm the observed branch names | Required reading complete; branch/SHA verified; `origin/main:docs/ecom-os/parallel-build/WORKTREE-SETUP-REPORT.md` inspected |
+| A00 | `coordination/program` | `agent/a00-orchestrator`; publication alias `coordination/program` | discovery | Programme baseline and audit queue | Branch name mismatch remains in this branch's normative parallel docs; `origin/main` launch cards confirm the observed branch names | Required reading complete; branch/SHA verified; `origin/main:docs/ecom-os/parallel-build/WORKTREE-SETUP-REPORT.md` inspected |
 | A01 | `agent/A01-platform-foundation` | `agent/a01-foundation` at `3909904` | not_started | Platform/identity contracts | Living docs still placeholders | None |
 | A02 | `agent/A02-durable-core` | `agent/a02-trace-ledger` at `3909904` | not_started | Durable core | Living docs still placeholders | None |
 | A03 | `agent/A03-hermes-integration` | `agent/a03-hermes-runtime` at `3909904` | not_started | Hermes bridge/chat | Living docs still placeholders | None |
@@ -38,6 +39,11 @@ contains proposed contracts only.
 The immediate integration boundary is documentation/coordination only. Do not integrate
 feature work until each builder updates its owned living docs with concrete code paths,
 interfaces, verification evidence, and branch identity.
+
+A00 remains checked out on `agent/a00-orchestrator` per launch instruction. The
+`coordination/program` ref is maintained as a read-only publication alias for builders
+that follow the canonical `git show coordination/program:...` lookup documented in the
+parallel-build protocol.
 
 Current baseline implementation remains a prototype migration input, not v2-compliant
 foundation: it still contains `AgentRuntime`, `/delegate` Hermes gateway assumptions,
