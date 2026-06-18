@@ -28,8 +28,9 @@ docs; every builder `CURRENT.md` and `INTERFACES.md`; and
 
 ## Current programme statement
 
-After `git fetch --all --prune`, the only observed `origin` agent/programme refs are
-`origin/agent/a00-orchestrator` and `origin/coordination/program`, both at `4cff090`.
+The pre-checkpoint `git fetch --all --prune` saw only `origin` agent/programme refs
+`origin/agent/a00-orchestrator` and `origin/coordination/program`, both then at `4cff090`;
+this checkpoint publishes the refreshed A00 docs to those same refs.
 Local sibling worktrees have advanced unevenly: A01 and A09 have local commits; A01 plus
 A03/A04/A05/A06/A07/A08 have unpublished worktree diffs; A02 remains placeholder-only.
 Because these builder branches are not visible through `origin`, they are current local
