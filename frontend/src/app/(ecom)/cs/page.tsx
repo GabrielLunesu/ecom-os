@@ -1,17 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bot, Loader2, Play, ShieldCheck, User, X } from "lucide-react";
+import { Bot, Loader2, Play, User, X } from "lucide-react";
 
 import { PageHeader } from "@/components/ecom/PageHeader";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { duration, easing, spring } from "@/lib/design/tokens";
 import {
-  fetchTicket,
   runCsLoop,
+  useTicket,
   useTickets,
   type Ticket,
 } from "@/lib/ecom-api";
@@ -24,10 +24,7 @@ const LANES = [
   { key: "resolved", label: "Resolved" },
 ] as const;
 
-const TABS = ["Tickets", "Overview", "Setup"] as const;
-
 export default function CustomerServicePage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Tickets");
   const qc = useQueryClient();
   const tickets = useTickets();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -61,56 +58,8 @@ export default function CustomerServicePage() {
         }
       />
 
-      <div className="mb-4 flex gap-1 rounded-lg bg-[color:var(--surface-muted)] p-1 text-sm">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={cn(
-              "relative rounded-md px-3 py-1.5 font-medium transition-colors",
-              tab === t ? "text-strong" : "text-muted hover:text-strong",
-            )}
-          >
-            {tab === t ? (
-              <motion.span
-                layoutId="cs-tab"
-                transition={spring.default}
-                className="absolute inset-0 rounded-md bg-[color:var(--surface)] shadow-sm"
-              />
-            ) : null}
-            <span className="relative z-10">{t}</span>
-          </button>
-        ))}
-      </div>
-
-      {tab === "Tickets" ? (
-        <div className="flex gap-3 overflow-x-auto pb-2">
-          {LANES.map((lane) => {
-            const items = all.filter((t) => t.status === lane.key);
-            return (
-              <div key={lane.key} className="w-[260px] shrink-0">
-                <div className="mb-2 flex items-center justify-between px-1">
-                  <span className="text-[13px] font-semibold text-strong">{lane.label}</span>
-                  <span className="rounded-full bg-[color:var(--surface-muted)] px-2 text-xs text-muted">
-                    {items.length}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <AnimatePresence>
-                    {items.map((t) => (
-                      <TicketCard key={t.id} ticket={t} onOpen={() => setOpenId(t.id)} />
-                    ))}
-                  </AnimatePresence>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-
-      {tab === "Overview" ? (
-        <div className="grid grid-cols-3 gap-3">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="grid flex-1 grid-cols-3 gap-3">
           {[
             { label: "Open tickets", value: counts.open },
             { label: "Auto-resolved", value: counts.resolved },
@@ -127,22 +76,37 @@ export default function CustomerServicePage() {
             </div>
           ))}
         </div>
-      ) : null}
+        <span className="ml-4 flex items-center gap-1.5 text-xs text-quiet">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--success)] opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[color:var(--success)]" />
+          </span>
+          Live
+        </span>
+      </div>
 
-      {tab === "Setup" ? (
-        <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-card">
-          <div className="flex items-center gap-2 text-sm font-medium text-strong">
-            <ShieldCheck className="h-4 w-4 text-[color:var(--accent)]" />
-            CS agent capability
-          </div>
-          <ul className="mt-3 space-y-2 text-sm text-muted">
-            <li>Scope: read order data + create discounts. No refund tool (Invariant 2).</li>
-            <li>Sticky escalation: once a rep is needed, replies never re-trigger auto (Invariant 3).</li>
-            <li>Customer text is treated as untrusted data, never instructions (Invariant 4).</li>
-            <li>SLA, tone, response prompt, and handoff rules: per-agent config (extends here).</li>
-          </ul>
-        </div>
-      ) : null}
+      <div className="flex gap-3 overflow-x-auto pb-2">
+        {LANES.map((lane) => {
+          const items = all.filter((t) => t.status === lane.key);
+          return (
+            <div key={lane.key} className="w-[260px] shrink-0">
+              <div className="mb-2 flex items-center justify-between px-1">
+                <span className="text-[13px] font-semibold text-strong">{lane.label}</span>
+                <span className="rounded-full bg-[color:var(--surface-muted)] px-2 text-xs text-muted">
+                  {items.length}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <AnimatePresence>
+                  {items.map((t) => (
+                    <TicketCard key={t.id} ticket={t} onOpen={() => setOpenId(t.id)} />
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       <AnimatePresence>
         {openId ? <TicketDrawer id={openId} onClose={() => setOpenId(null)} /> : null}
@@ -170,7 +134,7 @@ function TicketCard({ ticket, onOpen }: { ticket: Ticket; onOpen: () => void }) 
 }
 
 function TicketDrawer({ id, onClose }: { id: string; onClose: () => void }) {
-  const ticket = useQuery({ queryKey: ["ecom", "ticket", id], queryFn: () => fetchTicket(id) });
+  const ticket = useTicket(id);
   const d = ticket.data;
   return (
     <>

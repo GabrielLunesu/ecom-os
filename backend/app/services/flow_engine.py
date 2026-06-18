@@ -1,15 +1,21 @@
 """Flow engine — runs a merchant-configured CS flow against a ticket.
 
-A flow is an ordered list of deterministic steps. The engine executes them until it
-must wait for the customer (awaiting_customer), resolves, or escalates to a rep. Only
-the customer-facing wording is templated — the control flow is plain if-statements.
+A flow is a GRAPH of steps. The engine walks it until it must wait for the customer
+(awaiting_customer), resolves, or escalates to a rep. The CONTROL FLOW (which step
+runs next, the discount value, the refund gate) lives in code and step CONFIG; only
+the customer-facing WORDING is produced — by an LLM (see `cs_llm`) from a per-step
+prompt grounded in real order context, or, when a step has no prompt / the LLM is
+unavailable, by a deterministic template (the original behaviour).
 
 Structural invariants (not configurable):
-- Discounts are capped (Inv-safe); a flow can offer them but the cap is enforced here.
+- Discount codes (coupons, not refunds) use the percent from step CONFIG — set by the
+  merchant in the flow builder, never from the customer or the LLM. Capped at 100% as a
+  ceiling against a config typo; the merchant chooses the tier per step.
 - A flow can FILE a refund into the approval lane (`request_refund_approval`) but can
   NEVER execute one — RefundExecutor is never imported or called here (Invariant 2).
-- `escalate_keywords` and unhandled cases hand off to a human; once needs_rep a flow
-  never resumes (Invariant 3). The inbound text is untrusted data (Invariant 4).
+- `escalate_keywords` and unhandled cases hand off to a human; once needs_rep/resolved
+  a flow never resumes (Invariant 3). The inbound text is untrusted data passed only as
+  delimited input to the LLM (Invariant 4). Secrets are never logged (Invariant 5).
 """
 
 from __future__ import annotations
@@ -27,13 +33,14 @@ from app.core.time import utcnow
 from app.models.brand import Brand
 from app.models.flow import Flow
 from app.models.tickets import Ticket, TicketAudit, TicketEvidence, TicketMessage
+from app.services import cs_llm
 from app.services.connectors.base import InboxConnector, ShopifyConnector
 from app.services.tickets import ticket_messages
 from app.services.vault import get_document
 
 logger = get_logger(__name__)
 
-MAX_DISCOUNT = 20.0
+MAX_DISCOUNT = 100.0
 _ORDER_RE = re.compile(r"#?\s*(\d{3,})")
 _ACCEPT = (
     "yes", "yeah", "yep", "ok", "okay", "sure", "keep", "deal", "sounds good",
@@ -76,6 +83,11 @@ def _fulfillment_phrase(order: dict[str, Any] | None) -> str:
         "fulfilled": "Your order has shipped.",
         "partial": "Part of your order has shipped; the rest is on the way.",
     }.get(status, "Your order is being prepared and has not shipped yet.")
+
+
+def _id_index_map(steps: list[dict[str, Any]]) -> dict[str, int]:
+    """Map each step's stable `id` to its position for goto resolution."""
+    return {str(s["id"]): i for i, s in enumerate(steps) if s.get("id")}
 
 
 class FlowEngine:
@@ -124,44 +136,75 @@ class FlowEngine:
 
         data: dict[str, Any] = dict(ticket.flow_data or {})
         steps = flow.steps or []
+        ids = _id_index_map(steps)
         i = ticket.flow_step
 
         # If we were waiting on a step, resolve that branch first.
         if data.get("awaiting_step") == i and i < len(steps):
-            branch = await self._resume_step(session, ticket, steps[i], data, body)
+            branch = await self._resume_step(session, ticket, steps, i, ids, data, body)
             if branch.kind != "continue":
                 return await self._persist_and_finish(session, ticket, data, i, branch)
-            i += 1  # advance past the resolved wait-step
+            # `reason` carries the next step index chosen by branch resolution.
+            i = int(branch.reason)
+            data.pop("awaiting_step", None)
 
         # Run forward until wait / resolve / escalate / end.
-        while i < len(steps):
-            outcome = await self._run_step(session, ticket, steps[i], data, body)
+        while 0 <= i < len(steps):
+            outcome = await self._run_step(session, ticket, steps[i], data, body, i, ids)
             if outcome.kind == "wait":
                 data["awaiting_step"] = i
                 return await self._persist_and_finish(session, ticket, data, i, outcome)
             if outcome.kind in ("resolve", "escalate"):
                 return await self._persist_and_finish(session, ticket, data, i, outcome)
-            i += 1  # continue
+            # "continue": `reason` may carry an explicit next index (goto); else fall through.
+            i = int(outcome.reason) if outcome.reason.lstrip("-").isdigit() else i + 1
 
         return await self._persist_and_finish(
-            session, ticket, data, max(i - 1, 0), FlowOutcome("resolve", "flow complete")
+            session, ticket, data, max(min(i, len(steps) - 1), 0), FlowOutcome("resolve", "flow complete")
         )
+
+    # --- goto resolution -----------------------------------------------------
+    def _resolve_goto(self, goto: str, i: int, ids: dict[str, int]) -> FlowOutcome:
+        """Turn a `goto` target into a continue/resolve/escalate outcome.
+
+        "resolve" -> resolve, "escalate" -> escalate, "next" -> i+1, else jump to the
+        step whose id matches. A continue's `reason` holds the next index as a string.
+        """
+        if goto == "resolve":
+            return FlowOutcome("resolve", "flow resolve")
+        if goto == "escalate":
+            return FlowOutcome("escalate", "flow escalate")
+        if goto == "next" or not goto:
+            return FlowOutcome("continue", str(i + 1))
+        if goto in ids:
+            return FlowOutcome("continue", str(ids[goto]))
+        logger.warning("unknown goto target: %s", goto)
+        return FlowOutcome("escalate", f"unknown goto target {goto}")
 
     # --- step dispatch -------------------------------------------------------
     async def _run_step(
-        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any], body: str
+        self,
+        session: AsyncSession,
+        ticket: Ticket,
+        step: dict[str, Any],
+        data: dict[str, Any],
+        body: str,
+        i: int,
+        ids: dict[str, int],
     ) -> FlowOutcome:
         kind = step.get("type")
+        if kind == "message":
+            return await self._step_message(session, ticket, step, data, body, i, ids)
         if kind == "lookup_order":
             return await self._step_lookup_order(session, ticket, data, body)
         if kind == "cite_policy":
             return await self._step_cite_policy(session, ticket, step, data)
         if kind == "send_reply":
-            return await self._step_send_reply(session, ticket, step, data)
+            return await self._step_send_reply(session, ticket, step, data, body)
         if kind == "offer_discount":
-            return await self._step_offer_discount(session, ticket, step, data)
+            return await self._step_offer_discount(session, ticket, step, data, body)
         if kind == "request_refund_approval":
-            return await self._step_request_refund(session, ticket, step, data)
+            return await self._step_request_refund(session, ticket, step, data, body)
         if kind == "escalate":
             return FlowOutcome("escalate", step.get("reason", "flow escalate step"))
         if kind == "resolve":
@@ -170,17 +213,71 @@ class FlowEngine:
         return FlowOutcome("escalate", f"unknown step type {kind}")
 
     async def _resume_step(
-        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any], body: str
+        self,
+        session: AsyncSession,
+        ticket: Ticket,
+        steps: list[dict[str, Any]],
+        i: int,
+        ids: dict[str, int],
+        data: dict[str, Any],
+        body: str,
     ) -> FlowOutcome:
-        """Branch on a customer reply for a waiting step. Default = advance (continue)."""
+        """Branch on a customer reply for a waiting step. continue.reason = next index."""
+        step = steps[i]
+        branches = step.get("branches")
+        if step.get("type") == "message" and branches:
+            labels = [str(b.get("label", "")) for b in branches]
+            idx = await cs_llm.classify_reply(branches=labels, reply=body, context=self._context(data))
+            # On classify failure (-1) take the LAST (safest) branch.
+            chosen = branches[idx] if 0 <= idx < len(branches) else branches[-1]
+            path = list(data.get("branch_path") or [])
+            path.append({"step_id": step.get("id", ""), "branch_label": chosen.get("label", "")})
+            data["branch_path"] = path
+            await self._evidence(
+                session, ticket, "branch", str(chosen.get("label", "")),
+                {"step_id": step.get("id", ""), "classified_index": idx},
+            )
+            return self._resolve_goto(str(chosen.get("goto", "next")), i, ids)
         if step.get("type") == "offer_discount":
             if _looks_like_acceptance(body):
                 await self._send(session, ticket, step.get("accept_message", "Great — your discount is applied. Thanks for staying with us!"), data)
                 return FlowOutcome("resolve", "customer accepted the offer")
-            return FlowOutcome("continue", "customer declined; advancing")
-        return FlowOutcome("continue", "resume advance")
+            return FlowOutcome("continue", str(i + 1))  # customer declined; advance
+        return FlowOutcome("continue", str(i + 1))
 
     # --- steps ---------------------------------------------------------------
+    async def _ensure_context(
+        self, session: AsyncSession, ticket: Ticket, data: dict[str, Any], body: str
+    ) -> None:
+        """Look up order + policy once (idempotent) so a message step is grounded."""
+        if "order_name" not in data:
+            await self._step_lookup_order(session, ticket, data, body)
+        if "policy_excerpt" not in data:
+            await self._step_cite_policy(session, ticket, {"slug": "shipping-policy"}, data)
+
+    async def _step_message(
+        self,
+        session: AsyncSession,
+        ticket: Ticket,
+        step: dict[str, Any],
+        data: dict[str, Any],
+        body: str,
+        i: int,
+        ids: dict[str, int],
+    ) -> FlowOutcome:
+        await self._ensure_context(session, ticket, data, body)
+
+        # Discount value is taken from CONFIG only (never the customer or the LLM).
+        if step.get("discount_percent") is not None:
+            await self._issue_discount(session, ticket, float(step["discount_percent"]), data)
+
+        await self._send_llm(session, ticket, step, data, body)
+
+        if step.get("branches"):
+            return FlowOutcome("wait", "awaiting customer decision")
+        # Branch-less message advances via its `goto` (default: next step).
+        return self._resolve_goto(str(step.get("goto", "next")), i, ids)
+
     async def _step_lookup_order(
         self, session: AsyncSession, ticket: Ticket, data: dict[str, Any], body: str
     ) -> FlowOutcome:
@@ -196,6 +293,7 @@ class FlowEngine:
         data["order_name"] = (order or {}).get("name") or (f"#{ref}" if ref else "your order")
         data["order_id"] = str((order or {}).get("id") or "")
         data["order_total"] = float((order or {}).get("total_price") or 0)
+        data["order_status"] = (order or {}).get("fulfillment_status") or "unfulfilled"
         data["fulfillment_phrase"] = _fulfillment_phrase(order)
         await self._evidence(session, ticket, "order_lookup", data["order_name"], {"found": bool(order)})
         return FlowOutcome("continue")
@@ -213,28 +311,27 @@ class FlowEngine:
         return FlowOutcome("continue")
 
     async def _step_send_reply(
-        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any]
+        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any], body: str
     ) -> FlowOutcome:
-        await self._send(session, ticket, step.get("message", ""), data)
+        if step.get("prompt"):
+            await self._send_llm(session, ticket, step, data, body)
+        else:
+            await self._send(session, ticket, step.get("message", ""), data)
         return FlowOutcome("continue")
 
     async def _step_offer_discount(
-        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any]
+        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any], body: str
     ) -> FlowOutcome:
-        pct = min(float(step.get("percent", 10)), MAX_DISCOUNT)
-        code = f"SAVE{int(pct)}-{str(ticket.id)[:6].upper()}"
-        try:
-            await self.shopify.create_discount(title=f"CS offer {int(pct)}%", percentage=pct, code=code)
-        except Exception:  # noqa: BLE001
-            logger.warning("discount creation failed; offering code anyway")
-        data["discount_code"] = code
-        data["discount_percent"] = int(pct)
-        await self._evidence(session, ticket, "discount_offer", f"{int(pct)}% {code}", {"percent": pct})
-        await self._send(session, ticket, step.get("message", "Here's {discount_percent}% off: {discount_code}"), data)
+        pct = await self._issue_discount(session, ticket, float(step.get("percent", 10)), data)
+        if step.get("prompt"):
+            await self._send_llm(session, ticket, step, data, body)
+        else:
+            await self._send(session, ticket, step.get("message", "Here's {discount_percent}% off: {discount_code}"), data)
+        _ = pct
         return FlowOutcome("wait", "awaiting customer decision on discount")
 
     async def _step_request_refund(
-        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any]
+        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any], body: str
     ) -> FlowOutcome:
         # FILE a refund into the approval lane — NEVER execute one (Invariant 2).
         from app.services.refunds import create_refund_request
@@ -253,11 +350,64 @@ class FlowEngine:
                 ticket_id=ticket.id,
             )
         await self._evidence(session, ticket, "refund_filed", str(data.get("order_name", "")), {"approval_lane": True})
-        await self._send(session, ticket, step.get("message", "I've sent your refund to our team for approval; we'll be in touch shortly."), data)
+        if step.get("prompt"):
+            await self._send_llm(session, ticket, step, data, body)
+        else:
+            await self._send(session, ticket, step.get("message", "I've sent your refund to our team for approval; we'll be in touch shortly."), data)
         # Hand to a human to approve the refund (sticky escalation).
         return FlowOutcome("escalate", "refund filed; awaiting human approval")
 
     # --- effects -------------------------------------------------------------
+    async def _issue_discount(
+        self, session: AsyncSession, ticket: Ticket, percent: float, data: dict[str, Any]
+    ) -> float:
+        """Create a capped percentage code from CONFIG-supplied `percent`. Returns it."""
+        pct = min(percent, MAX_DISCOUNT)
+        code = f"SAVE{int(pct)}-{str(ticket.id)[:6].upper()}"
+        try:
+            await self.shopify.create_discount(title=f"CS offer {int(pct)}%", percentage=pct, code=code)
+        except Exception:  # noqa: BLE001
+            logger.warning("discount creation failed; offering code anyway")
+        data["discount_code"] = code
+        data["discount_percent"] = int(pct)
+        await self._evidence(session, ticket, "discount_offer", f"{int(pct)}% {code}", {"percent": pct})
+        return pct
+
+    def _context(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Grounded facts passed to the LLM — real order/policy/store data only."""
+        return {
+            "order_name": data.get("order_name", ""),
+            "order_status": data.get("order_status", ""),
+            "order_total": data.get("order_total", ""),
+            "fulfillment_phrase": data.get("fulfillment_phrase", ""),
+            "tracking_url": data.get("tracking_url", ""),
+            "policy_excerpt": data.get("policy_excerpt", ""),
+            "discount_code": data.get("discount_code", ""),
+            "discount_percent": data.get("discount_percent", ""),
+            "store_facts": self.facts,
+        }
+
+    async def _send_llm(
+        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any], body: str
+    ) -> None:
+        """Generate the email via the LLM; fall back to template render on failure."""
+        first_name = (ticket.customer_name or "there").split(" ")[0]
+        context = {"customer_first_name": first_name, **self._context(data)}
+        history = await self._history(session, ticket)
+        try:
+            text = await cs_llm.generate_email(
+                prompt=str(step.get("prompt", "")),
+                context=context,
+                history=history,
+                support_name=self.support_name,
+                public_url=self.public_url,
+            )
+        except Exception:  # noqa: BLE001 — no key / API error => deterministic fallback
+            logger.warning("LLM email generation unavailable; using template fallback")
+            await self._send(session, ticket, step.get("message", str(step.get("prompt", ""))), data)
+            return
+        await self._send_text(session, ticket, text)
+
     async def _send(
         self, session: AsyncSession, ticket: Ticket, template: str, data: dict[str, Any]
     ) -> None:
@@ -270,6 +420,9 @@ class FlowEngine:
                 **data,
             },
         )
+        await self._send_text(session, ticket, body)
+
+    async def _send_text(self, session: AsyncSession, ticket: Ticket, body: str) -> None:
         await self.inbox.send_message(
             to=ticket.customer_email,
             subject=f"Re: {ticket.subject}",
@@ -315,6 +468,10 @@ class FlowEngine:
         msgs = await ticket_messages(session, ticket.id)
         inbound = [m for m in msgs if m.direction == "inbound"]
         return inbound[-1].body if inbound else ""
+
+    async def _history(self, session: AsyncSession, ticket: Ticket) -> list[dict[str, Any]]:
+        msgs = await ticket_messages(session, ticket.id)
+        return [{"direction": m.direction, "body": m.body} for m in msgs]
 
 
 def _extract_order_ref(text: str) -> str | None:

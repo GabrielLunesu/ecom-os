@@ -180,7 +180,25 @@ export const runCsLoop = async (): Promise<{ ingested: number; handled: number }
   )).data;
 
 export function useTickets() {
-  return useQuery({ queryKey: ["ecom", "tickets"], queryFn: fetchTickets, staleTime: 10_000 });
+  // Live board: poll so new/changed tickets appear without a refresh.
+  return useQuery({
+    queryKey: ["ecom", "tickets"],
+    queryFn: fetchTickets,
+    staleTime: 4_000,
+    refetchInterval: 8_000,
+  });
+}
+
+export function useTicket(id: string | null) {
+  // Live in-ticket feed: poll the open ticket so the agent's messages + evidence
+  // stream in (faster while the agent is actively drafting).
+  return useQuery({
+    queryKey: ["ecom", "ticket", id],
+    queryFn: () => fetchTicket(id as string),
+    enabled: !!id,
+    refetchInterval: (q) =>
+      q.state.data?.status === "auto_handling" ? 2_000 : 6_000,
+  });
 }
 
 // --- Agents ---
