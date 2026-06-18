@@ -402,9 +402,15 @@ class FlowEngine:
                 support_name=self.support_name,
                 public_url=self.public_url,
             )
-        except Exception:  # noqa: BLE001 — no key / API error => deterministic fallback
-            logger.warning("LLM email generation unavailable; using template fallback")
-            await self._send(session, ticket, step.get("message", str(step.get("prompt", ""))), data)
+        except Exception:  # noqa: BLE001 — no key / API error => safe fallback
+            logger.warning("LLM email generation unavailable; using safe fallback")
+            # NEVER send the prompt (it is an internal instruction). Use the step's
+            # legacy template if the merchant set one, else a neutral holding message.
+            fallback = step.get("message") or (
+                f"Hi {first_name}, thanks for reaching out — I'm looking into this for "
+                "you and someone from our team will follow up shortly."
+            )
+            await self._send(session, ticket, fallback, data)
             return
         await self._send_text(session, ticket, text)
 

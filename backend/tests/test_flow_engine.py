@@ -245,6 +245,28 @@ async def test_discount_created_from_step_config_and_capped() -> None:
 
 
 @pytest.mark.asyncio
+async def test_generation_failure_never_leaks_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If the LLM is unavailable, the internal step prompt must NEVER be emailed."""
+    session, brand, shop, inbox = await _setup()
+
+    async def _boom(**_kwargs: Any) -> str:
+        raise RuntimeError("ANTHROPIC_API_KEY not set")
+
+    monkeypatch.setattr(cs_llm, "generate_email", _boom)
+
+    rt = FlowCSRuntime(shopify=shop, inbox=inbox, store_domain="x.myshopify.com")
+    t = await _ticket(session, brand, subject="Where is my order #1001?", body="where is #1001")
+    await rt.handle_ticket(session, t)
+
+    flow = (await session.exec(select(Flow).where(Flow.intent == "wismo"))).first()
+    assert flow is not None and flow.steps
+    prompt = str(flow.steps[0].get("prompt", ""))
+    assert prompt and inbox.sent
+    body = inbox.sent[-1]["body"]
+    assert prompt not in body  # the internal instruction is never sent to the customer
+
+
+@pytest.mark.asyncio
 async def test_escalate_keyword_goes_straight_to_rep() -> None:
     session, brand, shop, inbox = await _setup()
     rt = FlowCSRuntime(shopify=shop, inbox=inbox, store_domain="x.myshopify.com")
