@@ -18,6 +18,34 @@ function isClerkInternalPath(pathname: string): boolean {
   return pathname.startsWith("/_clerk") || pathname.startsWith("/v1/");
 }
 
+/**
+ * Ecom-OS is the only surface. Legacy Mission Control routes are deprecated — each
+ * one bounces to its Ecom-OS equivalent (runs in both auth modes, before auth).
+ */
+const LEGACY_REDIRECTS: Record<string, string> = {
+  "/dashboard": "/overview",
+  "/boards": "/tasks",
+  "/board-groups": "/tasks",
+  "/approvals": "/cs",
+  "/activity": "/cs",
+  "/gateways": "/settings",
+  "/skills": "/settings",
+  "/tags": "/settings",
+  "/custom-fields": "/settings",
+  "/organization": "/settings",
+};
+
+function legacyRedirect(req: Request): NextResponse | null {
+  const url = new URL(req.url);
+  for (const [legacy, target] of Object.entries(LEGACY_REDIRECTS)) {
+    if (url.pathname === legacy || url.pathname.startsWith(`${legacy}/`)) {
+      url.pathname = target;
+      return NextResponse.redirect(url);
+    }
+  }
+  return null;
+}
+
 function requestOrigin(req: Request): string {
   const forwardedProto = req.headers.get("x-forwarded-proto");
   const forwardedHost = req.headers.get("x-forwarded-host");
@@ -34,6 +62,8 @@ function returnBackUrlFor(req: Request): string {
 
 export default isClerkEnabled()
   ? clerkMiddleware(async (auth, req) => {
+      const legacy = legacyRedirect(req);
+      if (legacy) return legacy;
       if (isClerkInternalPath(new URL(req.url).pathname)) {
         return NextResponse.next();
       }
@@ -48,7 +78,7 @@ export default isClerkEnabled()
 
       return NextResponse.next();
     })
-  : () => NextResponse.next();
+  : (req: Request) => legacyRedirect(req) ?? NextResponse.next();
 
 export const config = {
   matcher: [
