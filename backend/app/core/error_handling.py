@@ -33,6 +33,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response
 
 from app.core.config import settings
+from app.core.context import (
+    format_traceparent,
+    new_span_id,
+    new_trace_id,
+    parse_traceparent,
+)
 from app.core.errors import ApiError, ErrorCode
 from app.core.logging import (
     TRACE_LEVEL,
@@ -49,6 +55,8 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = get_logger(__name__)
 
 REQUEST_ID_HEADER: Final[str] = "X-Request-Id"
+TRACEPARENT_HEADER: Final[str] = "traceparent"
+TRACE_ID_HEADER: Final[str] = "X-Trace-Id"
 _HEALTH_CHECK_PATHS: Final[frozenset[str]] = frozenset({"/health", "/healthz", "/readyz"})
 
 ExceptionHandler = Callable[[Request, Exception], Response | Awaitable[Response]]
@@ -82,6 +90,7 @@ class RequestIdMiddleware:
         status_code: int | None = None
 
         request_id = self._get_or_create_request_id(scope)
+        trace_id, span_id = self._resolve_trace_context(scope)
         context_token = set_request_id(request_id)
         route_context_tokens = set_request_route_context(method, path)
         if should_log:
@@ -103,6 +112,13 @@ class RequestIdMiddleware:
                 if not any(key.lower() == self._header_name_bytes for key, _ in headers):
                     request_id_bytes = request_id.encode("latin-1")
                     headers.append((self._header_name_bytes, request_id_bytes))
+                headers.append((b"x-trace-id", trace_id.encode("latin-1")))
+                headers.append(
+                    (
+                        b"traceparent",
+                        format_traceparent(trace_id, span_id).encode("latin-1"),
+                    ),
+                )
                 status = message.get("status")
                 status_code = status if isinstance(status, int) else 500
                 if should_log:
@@ -163,6 +179,33 @@ class RequestIdMiddleware:
         state = scope.setdefault("state", {})
         state["request_id"] = request_id
         return request_id
+
+    def _resolve_trace_context(self, scope: Scope) -> tuple[str, str]:
+        """Resolve W3C trace context, honouring a valid inbound ``traceparent``.
+
+        Returns ``(trace_id, span_id)`` for this server span. A valid upstream
+        ``traceparent`` continues its trace and becomes the parent span; an absent or
+        malformed value starts a fresh trace (never trust an all-zero/bad id).
+        """
+        incoming: str | None = None
+        for key, value in scope.get("headers", []):
+            if key.lower() == b"traceparent":
+                incoming = value.decode("latin-1")
+                break
+
+        parsed = parse_traceparent(incoming)
+        if parsed is None:
+            trace_id = new_trace_id()
+            parent_span_id: str | None = None
+        else:
+            trace_id, parent_span_id = parsed
+        span_id = new_span_id()
+
+        state = scope.setdefault("state", {})
+        state["trace_id"] = trace_id
+        state["span_id"] = span_id
+        state["parent_span_id"] = parent_span_id
+        return trace_id, span_id
 
 
 def install_error_handling(app: FastAPI) -> None:
