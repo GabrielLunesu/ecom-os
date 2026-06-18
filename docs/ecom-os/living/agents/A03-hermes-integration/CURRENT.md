@@ -2,7 +2,7 @@
 owner: A03
 branch: agent/a03-hermes-runtime
 status: building
-last_verified_commit: 5b85766
+last_verified_commit: 5f971a7
 ---
 
 # A03 — Hermes Native Integration and Main Chat — Current State

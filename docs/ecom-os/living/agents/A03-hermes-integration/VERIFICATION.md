@@ -2,7 +2,7 @@
 
 ## Latest verified commit
 
-`5b85766` — tool catalog + HermesBridge foundation (fixture-driven). Pre-v2 baseline was
+`5f971a7` — tool catalog + HermesBridge foundation (fixture-driven). Pre-v2 baseline was
 `3909904`.
 
 ## Required checks
