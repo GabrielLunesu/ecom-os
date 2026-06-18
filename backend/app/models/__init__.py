@@ -21,6 +21,15 @@ from app.models.board_webhook_payloads import BoardWebhookPayload
 from app.models.board_webhooks import BoardWebhook
 from app.models.boards import Board
 from app.models.gateways import Gateway
+from app.models.identity import (
+    ChannelIdentity,
+    Permission,
+    PlatformBootstrap,
+    Role,
+    RolePermission,
+    ServiceIdentity,
+    UserRole,
+)
 from app.models.organization_board_access import OrganizationBoardAccess
 from app.models.organization_invite_board_access import OrganizationInviteBoardAccess
 from app.models.organization_invites import OrganizationInvite
@@ -65,6 +74,13 @@ __all__ = [
     "BoardGroup",
     "Board",
     "Gateway",
+    "Role",
+    "Permission",
+    "RolePermission",
+    "UserRole",
+    "ServiceIdentity",
+    "ChannelIdentity",
+    "PlatformBootstrap",
     "GatewayInstalledSkill",
     "MarketplaceSkill",
     "SkillPack",
