@@ -33,6 +33,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response
 
 from app.core.config import settings
+from app.core.errors import ApiError, ErrorCode
 from app.core.logging import (
     TRACE_LEVEL,
     get_logger,
@@ -183,6 +184,7 @@ def install_error_handling(app: FastAPI) -> None:
         StarletteHTTPException,
         _http_exception_exception_handler,
     )
+    app.add_exception_handler(ApiError, _api_error_exception_handler)
     app.add_exception_handler(Exception, _unhandled_exception_handler)
 
 
@@ -289,6 +291,45 @@ async def _http_exception_handler(
     )
 
 
+def _get_trace_id(request: Request) -> str | None:
+    trace_id = getattr(request.state, "trace_id", None)
+    if isinstance(trace_id, str) and trace_id:
+        return trace_id
+    return None
+
+
+async def _api_error_exception_handler(
+    request: Request,
+    exc: Exception,
+) -> JSONResponse:
+    if not isinstance(exc, ApiError):
+        msg = "Expected ApiError"
+        raise TypeError(msg)
+    request_id = _get_request_id(request)
+    trace_id = _get_trace_id(request)
+    # 5xx is operator-actionable; log it. 4xx is expected client error; stay quiet.
+    if exc.http_status >= 500:
+        logger.error(
+            "api_error",
+            extra={
+                "request_id": request_id,
+                "trace_id": trace_id,
+                "error_code": exc.code.value,
+                "method": request.method,
+                "path": request.url.path,
+            },
+        )
+    envelope = exc.to_envelope(trace_id=trace_id, request_id=request_id)
+    headers = dict(exc.headers) if exc.headers else {}
+    if request_id:
+        headers.setdefault(REQUEST_ID_HEADER, request_id)
+    return JSONResponse(
+        status_code=exc.http_status,
+        content=_json_safe(envelope.model_dump(exclude_none=True)),
+        headers=headers or None,
+    )
+
+
 async def _unhandled_exception_handler(
     request: Request,
     _exc: Exception,
@@ -302,8 +343,12 @@ async def _unhandled_exception_handler(
             "path": request.url.path,
         },
     )
+    payload = _error_payload(detail="Internal Server Error", request_id=request_id)
+    # Additive typed fields; keeps the legacy {detail, request_id} shape intact.
+    payload["code"] = ErrorCode.INTERNAL_ERROR.value
+    payload["retryable"] = False
     return JSONResponse(
         status_code=500,
-        content=_error_payload(detail="Internal Server Error", request_id=request_id),
+        content=payload,
         headers={REQUEST_ID_HEADER: request_id} if request_id else None,
     )
