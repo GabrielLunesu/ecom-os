@@ -41,6 +41,32 @@ the bundled MCP server (`python -m app.mcp_server`, read + discount tools only �
 and registers a `cronjob` to run the loop continuously. See
 [`docs/ecom-os/hermes.md`](./hermes.md).
 
+## Durable public URL (recommended): cheap domain + Cloudflare named tunnel
+
+A stable link that never changes (like `app.yourbrand.com`), clean HTTPS, no interstitial,
+no open ports. ~$1-10/yr for the domain; everything else is free. The named-tunnel service is
+already wired in `compose.prod.yml`.
+
+One-time setup (≈10 min):
+1. Buy a domain (Cloudflare Registrar / Namecheap / etc.).
+2. Add it to **Cloudflare** (free plan) and switch its nameservers to Cloudflare.
+3. **Cloudflare Zero Trust → Networks → Tunnels → Create a tunnel** → connector "Cloudflared".
+   Copy the **tunnel token** it shows.
+4. In that tunnel → **Public Hostname** → add: hostname `app.yourdomain.com`,
+   Service = **HTTP**, URL = `proxy:80`. (cloudflared reaches the `proxy` service on the
+   compose network.)
+5. In `.env` set:
+   ```
+   TUNNEL_TOKEN=<the tunnel token>
+   BASE_URL=https://app.yourdomain.com
+   CORS_ORIGINS=https://app.yourdomain.com
+   ```
+6. `./scripts/deploy/up.sh` — it runs with the tunnel. Open `https://app.yourdomain.com`, log in
+   with `LOCAL_AUTH_TOKEN`. The URL is permanent across restarts/updates.
+
+This stable URL is also what **realtime** uses: after step 6, `POST /api/v1/ecom/realtime/enable`
+and set your Composio project webhook URL from `GET /api/v1/ecom/realtime`.
+
 ## Expose it for free (no domain)
 
 Don't want to buy a domain? Run a **Cloudflare Quick Tunnel** — free, no account, no token,
