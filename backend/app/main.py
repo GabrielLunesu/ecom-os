@@ -25,6 +25,7 @@ from app.api.board_webhooks import router as board_webhooks_router
 from app.api.boards import router as boards_router
 from app.api.gateway import router as gateway_router
 from app.api.gateways import router as gateways_router
+from app.api.identity import router as identity_router
 from app.api.metrics import router as metrics_router
 from app.api.organizations import router as organizations_router
 from app.api.skills_marketplace import router as skills_marketplace_router
@@ -52,6 +53,12 @@ OPENAPI_TAGS = [
         "name": "auth",
         "description": (
             "Authentication bootstrap endpoints for resolving caller identity and session context."
+        ),
+    },
+    {
+        "name": "identity",
+        "description": (
+            "Current actor, instance roles/permissions, and owner bootstrap endpoints."
         ),
     },
     {
@@ -551,6 +558,7 @@ def readyz() -> HealthStatusResponse:
 
 api_v1 = APIRouter(prefix="/api/v1")
 api_v1.include_router(auth_router)
+api_v1.include_router(identity_router)
 api_v1.include_router(agent_router)
 api_v1.include_router(agents_router)
 api_v1.include_router(activity_router)
