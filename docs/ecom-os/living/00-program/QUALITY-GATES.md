@@ -13,6 +13,7 @@
 | Full restore/update | A09 | restore drill | pending | No A09 evidence |
 | Migration graph | A09/A02 | Alembic heads and N-1 upgrade evidence | partial baseline evidence | `uv run alembic heads` reports one head `a0b1c2d3e4f5`; no N-1 upgrade fixture evidence |
 | Baseline high-risk tests | A00/owners | Targeted test evidence for existing shortcut paths | partial baseline evidence | `uv run --extra dev pytest tests/test_connector_invariants.py tests/test_ticket_ingestion.py tests/test_refund_path.py -q` passed 23 tests with SQLAlchemy connection-cleanup warnings; these tests prove old prototype invariants only, not v2 gates |
-| Builder worktree drift | A00 | Current sibling worktree status | checked | A01–A09 sibling worktrees have no local tracked changes and remain at `3909904`; no implementation evidence yet |
+| Builder worktree drift | A00 | Current sibling worktree status | checked | A01/A03/A05/A06 now have local uncommitted living-doc diffs; all builder worktrees remain at `3909904`; no implementation code evidence yet |
+| Builder local living-doc progress | A00 | Local sibling worktree status and diffs | partial local evidence | A01/A03/A05/A06 have uncommitted living-doc diffs; A02/A04/A07/A08/A09 remain placeholder-only. Local diffs are not integration evidence until committed/pushed by owners. |
 
 This table reflects current gate status, not release history.

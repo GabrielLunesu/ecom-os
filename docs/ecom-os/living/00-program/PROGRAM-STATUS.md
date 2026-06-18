@@ -3,7 +3,7 @@ owner: A00
 baseline_commit: 3909904580732c27a9c6821ef44487c706d6a180
 coordination_branch: agent/a00-orchestrator
 published_alias: coordination/program
-last_verified_against: b483853d9f613edae793950cc5bdc9496ba741a2
+last_verified_against: a0ef3da422bdda4923275679370c7b04a0874679
 ---
 
 # Programme Status
@@ -16,12 +16,12 @@ docs; every builder `CURRENT.md` and `INTERFACES.md`; and
 | Agent | Canonical branch in prompts/docs | Observed local branch | Reported status | Current deliverable | Open blocker | Ready evidence |
 |---|---|---|---|---|---|---|
 | A00 | `coordination/program` | `agent/a00-orchestrator`; publication alias `coordination/program` | discovery | Programme baseline and audit queue | Branch name mismatch remains in this branch's normative parallel docs; `origin/main` launch cards confirm the observed branch names | Required reading complete; branch/SHA verified; `origin/main:docs/ecom-os/parallel-build/WORKTREE-SETUP-REPORT.md` inspected |
-| A01 | `agent/A01-platform-foundation` | `agent/a01-foundation` at `3909904` | not_started | Platform/identity contracts | Living docs still placeholders | None |
+| A01 | `agent/A01-platform-foundation` | `agent/a01-foundation` at `3909904`; local uncommitted living-doc diffs | local discovery | Platform/identity contracts | Unpublished docs; no code/tests; repo-layout decision request needed | Local `CURRENT.md`, `DIAGRAMS.md`, and `INTERFACES.md` diffs inspected |
 | A02 | `agent/A02-durable-core` | `agent/a02-trace-ledger` at `3909904` | not_started | Durable core | Living docs still placeholders | None |
-| A03 | `agent/A03-hermes-integration` | `agent/a03-hermes-runtime` at `3909904` | not_started | Hermes bridge/chat | Living docs still placeholders | None |
+| A03 | `agent/A03-hermes-integration` | `agent/a03-hermes-runtime` at `3909904`; local uncommitted living-doc diffs | local audit_complete claim | Hermes bridge/chat | Unpublished docs; OpenClaw-vs-Hermes decision needed; no v2 code | Local `CURRENT.md` and `INTERFACES.md` diffs inspected |
 | A04 | `agent/A04-commerce-connectors` | `agent/a04-cs` at `3909904` | not_started | Connector/read model | Living docs still placeholders | None |
-| A05 | `agent/A05-customer-service` | `agent/a05-finance` at `3909904` | not_started | CS/autonomy | Living docs still placeholders | None |
-| A06 | `agent/A06-design-system` | `agent/a06-ui-system` at `3909904` | not_started | UI source of truth | Living docs still placeholders | None |
+| A05 | `agent/A05-customer-service` | `agent/a05-finance` at `3909904`; local uncommitted living-doc diffs | local discovery | CS/autonomy | Unpublished docs; blocked on A02/A03/A04/A06 contracts for production writes | Local full living-doc folder diff inspected |
+| A06 | `agent/A06-design-system` | `agent/a06-ui-system` at `3909904`; local uncommitted living-doc diffs | local discovery | UI source of truth | Unpublished docs; no code/tests; shape dependencies pending for trace/action/KPI cards | Local full living-doc folder diff inspected |
 | A07 | `agent/A07-operator-workspace` | `agent/a07-chat` at `3909904` | not_started | Today/tasks/knowledge | Living docs still placeholders | None |
 | A08 | `agent/A08-finance-brief` | `agent/a08-ops-briefs` at `3909904` | not_started | Finance/daily brief | Living docs still placeholders | None |
 | A09 | `agent/A09-production-integration` | `agent/a09-integration` at `3909904` | not_started | Production/integration | Living docs still placeholders | None |
@@ -30,11 +30,11 @@ docs; every builder `CURRENT.md` and `INTERFACES.md`; and
 
 After `git fetch --all --prune`, no observed A01–A09 agent branch has published
 implementation or verification evidence beyond the baseline commit in this worktree.
-Sibling worktrees `/Users/gabriellunesu/Git/ecom-os-worktrees/a01-foundation` through
-`a09-integration` were inspected with `git status --short`; they show no local tracked
-changes and remain at `3909904`. The programme is in launch/discovery: the v2 normative
-docs are present, all builder living docs are placeholders, and the interface registry
-contains proposed contracts only.
+Sibling worktrees remain at `3909904`. Local unpublished living-doc progress now exists in
+A01, A03, A05, and A06 worktrees; A02, A04, A07, A08, and A09 remain placeholder-only.
+Because those builder docs are uncommitted and unpushed, they are current local evidence
+for A00 monitoring but not ready-for-integration evidence. The interface registry remains
+proposed-only.
 
 The immediate integration boundary is documentation/coordination only. Do not integrate
 feature work until each builder updates its owned living docs with concrete code paths,
