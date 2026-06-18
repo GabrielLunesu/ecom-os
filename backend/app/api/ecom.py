@@ -9,11 +9,9 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
-
-from fastapi import HTTPException
 
 from app.api.deps import require_user_auth
 from app.db.session import get_session
@@ -50,9 +48,10 @@ class ConnectionsOut(BaseModel):
 
 
 @router.get("/connections", response_model=ConnectionsOut)
-async def get_connections() -> ConnectionsOut:
+async def get_connections(session: AsyncSession = Depends(get_session)) -> ConnectionsOut:
     """Live connection health for Shopify + the support inbox (Build Spec §1.5)."""
-    status = await connections_status()
+    await ensure_seed(session)
+    status = await connections_status(session)
     return ConnectionsOut.model_validate(status)
 
 
@@ -240,13 +239,16 @@ async def get_version() -> dict[str, str]:
     except OSError:
         version = "dev"
     try:
-        commit = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=True,
-        ).stdout.strip() or "unknown"
+        commit = (
+            subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=True,
+            ).stdout.strip()
+            or "unknown"
+        )
     except (OSError, subprocess.SubprocessError):
         commit = "unknown"
     return {"version": version, "commit": commit}
@@ -294,9 +296,7 @@ async def get_vault(session: AsyncSession = Depends(get_session)) -> list[VaultD
 
 
 @router.get("/vault/{slug}", response_model=VaultDocOut)
-async def get_vault_doc(
-    slug: str, session: AsyncSession = Depends(get_session)
-) -> VaultDocOut:
+async def get_vault_doc(slug: str, session: AsyncSession = Depends(get_session)) -> VaultDocOut:
     doc = await get_document(session, slug)
     if doc is None:
         raise HTTPException(status_code=404, detail="document not found")
@@ -628,7 +628,9 @@ class ChatIn(BaseModel):
 
 
 @router.post("/chat")
-async def post_chat(payload: ChatIn, session: AsyncSession = Depends(get_session)) -> dict[str, object]:
+async def post_chat(
+    payload: ChatIn, session: AsyncSession = Depends(get_session)
+) -> dict[str, object]:
     """Read-only copilot over Shopify + vault (Build Spec §7.4). No writes."""
     from app.services.chat import answer
 

@@ -76,7 +76,9 @@ class FakeShopify(ShopifyConnector):
         return {}
 
     async def search_orders(self, query: str, *, limit: int = 10) -> list[dict[str, Any]]:
-        return [{"id": 7, "name": "#1001", "total_price": "49.95", "fulfillment_status": "fulfilled"}]
+        return [
+            {"id": 7, "name": "#1001", "total_price": "49.95", "fulfillment_status": "fulfilled"}
+        ]
 
     async def get_fulfillments(self, order_id: str) -> list[dict[str, Any]]:
         return []
@@ -96,10 +98,14 @@ class FakeInbox(InboxConnector):
     async def health(self) -> dict[str, Any]:
         return {"status": "ACTIVE"}
 
-    async def list_messages(self, *, unread_only: bool = True, limit: int = 25) -> list[dict[str, Any]]:
+    async def list_messages(
+        self, *, unread_only: bool = True, limit: int = 25
+    ) -> list[dict[str, Any]]:
         return []
 
-    async def send_message(self, *, to: str, subject: str, body: str, in_reply_to: str | None = None) -> dict[str, Any]:
+    async def send_message(
+        self, *, to: str, subject: str, body: str, in_reply_to: str | None = None
+    ) -> dict[str, Any]:
         self.sent.append({"body": body})
         return {"ok": True}
 
@@ -114,7 +120,10 @@ async def _setup() -> tuple[AsyncSession, Brand, FakeShopify, FakeInbox]:
     await session.flush()
     session.add(
         VaultDocument(
-            brand_id=brand.id, slug="shipping-policy", title="Shipping Policy", tags="policy",
+            brand_id=brand.id,
+            slug="shipping-policy",
+            title="Shipping Policy",
+            tags="policy",
             body="Delivery 5-8 days. Track at https://x.myshopify.com/account",
         )
     )
@@ -123,12 +132,28 @@ async def _setup() -> tuple[AsyncSession, Brand, FakeShopify, FakeInbox]:
     return session, brand, FakeShopify(), FakeInbox()
 
 
-async def _ticket(session: AsyncSession, brand: Brand, *, subject: str, body: str, status: str = "new") -> Ticket:
-    t = Ticket(brand_id=brand.id, subject=subject, customer_email="shopper@example.com",
-               customer_name="Pat", status=status, inbound_message_external_id="m1")
+async def _ticket(
+    session: AsyncSession, brand: Brand, *, subject: str, body: str, status: str = "new"
+) -> Ticket:
+    t = Ticket(
+        brand_id=brand.id,
+        subject=subject,
+        customer_email="shopper@example.com",
+        customer_name="Pat",
+        status=status,
+        inbound_message_external_id="m1",
+    )
     session.add(t)
     await session.flush()
-    session.add(TicketMessage(ticket_id=t.id, direction="inbound", author="shopper@example.com", body=body, untrusted=True))
+    session.add(
+        TicketMessage(
+            ticket_id=t.id,
+            direction="inbound",
+            author="shopper@example.com",
+            body=body,
+            untrusted=True,
+        )
+    )
     await session.commit()
     await session.refresh(t)
     return t
@@ -136,7 +161,15 @@ async def _ticket(session: AsyncSession, brand: Brand, *, subject: str, body: st
 
 async def _reply(session: AsyncSession, ticket: Ticket, body: str) -> None:
     """Simulate a threaded customer reply that re-activates the ticket."""
-    session.add(TicketMessage(ticket_id=ticket.id, direction="inbound", author="shopper@example.com", body=body, untrusted=True))
+    session.add(
+        TicketMessage(
+            ticket_id=ticket.id,
+            direction="inbound",
+            author="shopper@example.com",
+            body=body,
+            untrusted=True,
+        )
+    )
     ticket.status = "auto_handling"
     session.add(ticket)
     await session.commit()
@@ -155,7 +188,9 @@ async def test_seed_flows_present() -> None:
 async def test_wismo_flow_waits_then_resolves_when_customer_is_satisfied() -> None:
     session, brand, shop, inbox = await _setup()
     rt = FlowCSRuntime(shopify=shop, inbox=inbox, store_domain="x.myshopify.com")
-    t = await _ticket(session, brand, subject="Where is my order #1001?", body="haven't received #1001")
+    t = await _ticket(
+        session, brand, subject="Where is my order #1001?", body="haven't received #1001"
+    )
     first = await rt.handle_ticket(session, t)
     assert first.action == "awaiting"
     assert t.status == "awaiting_customer"
@@ -172,7 +207,9 @@ async def test_wismo_flow_waits_then_resolves_when_customer_is_satisfied() -> No
 async def test_wismo_flow_escalates_when_customer_still_has_not_received_order() -> None:
     session, brand, shop, inbox = await _setup()
     rt = FlowCSRuntime(shopify=shop, inbox=inbox, store_domain="x.myshopify.com")
-    t = await _ticket(session, brand, subject="Where is my order #1001?", body="where is order #1001?")
+    t = await _ticket(
+        session, brand, subject="Where is my order #1001?", body="where is order #1001?"
+    )
     first = await rt.handle_ticket(session, t)
     assert first.action == "awaiting"
     assert t.status == "awaiting_customer"
@@ -294,7 +331,9 @@ async def test_generation_failure_never_leaks_prompt(monkeypatch: pytest.MonkeyP
 async def test_escalate_keyword_goes_straight_to_rep() -> None:
     session, brand, shop, inbox = await _setup()
     rt = FlowCSRuntime(shopify=shop, inbox=inbox, store_domain="x.myshopify.com")
-    t = await _ticket(session, brand, subject="Refund", body="refund #1001 or I'll file a chargeback")
+    t = await _ticket(
+        session, brand, subject="Refund", body="refund #1001 or I'll file a chargeback"
+    )
     res = await rt.handle_ticket(session, t)
     assert res.action == "escalated" and t.status == "needs_rep"
     assert (await session.exec(select(RefundRequest))).all() == []

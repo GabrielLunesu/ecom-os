@@ -35,9 +35,7 @@ logger = get_logger(__name__)
 _ACTIONABLE = ("new", "auto_handling")
 
 
-def _select_runtime(
-    shopify: ShopifyConnector, inbox: InboxConnector, store: Store
-) -> AgentRuntime:
+def _select_runtime(shopify: ShopifyConnector, inbox: InboxConnector, store: Store) -> AgentRuntime:
     """Pick the CS brain from CS_RUNTIME: "" deterministic | "flow" | "llm" | "hermes".
 
     All take read + discount tools only — never a refund tool (Invariant 2). The flow
@@ -63,9 +61,8 @@ def _select_runtime(
 
 
 async def run_cs_loop(session: AsyncSession) -> dict[str, object]:
-    await assert_ready_for_cs_loop()  # gate (§1.5)
-
     brand = await ensure_seed(session)
+    await assert_ready_for_cs_loop(session)  # gate (§1.5)
     await ensure_seed_flows(session, brand)  # default WISMO + refund flows
     stores = await list_stores(session)
     if not stores:
@@ -80,9 +77,7 @@ async def run_cs_loop(session: AsyncSession) -> dict[str, object]:
         ConnectionRef(provider=store.provider, external_id=store.external_id)
     )
     account_id = await discover_active_mail_account()
-    inbox = ComposioInboxConnector(
-        ConnectionRef(provider="composio", external_id=account_id or "")
-    )
+    inbox = ComposioInboxConnector(ConnectionRef(provider="composio", external_id=account_id or ""))
     runtime = _select_runtime(shopify, inbox, store)
 
     # 3. Handle actionable tickets.
