@@ -36,13 +36,29 @@ import {
 
 /** Important secret handles surfaced to the operator. Values are write-only:
  * we render only "Set" / "Not set", never the secret itself. */
-const SECRET_HANDLES: { handle: string; label: string; optional: boolean }[] = [
-  { handle: "COMPOSIO_API_KEY", label: "Composio API key", optional: false },
-  { handle: "ANTHROPIC_API_KEY", label: "Anthropic API key", optional: true },
+const SECRET_HANDLES: {
+  handle: string;
+  label: string;
+  optional: boolean;
+  hint?: string;
+}[] = [
+  {
+    handle: "COMPOSIO_API_KEY",
+    label: "Composio API key",
+    optional: false,
+    hint: "Connects the support inbox + Shopify tools.",
+  },
+  {
+    handle: "ANTHROPIC_API_KEY",
+    label: "Anthropic API key",
+    optional: false,
+    hint: "Required — the CS agent generates every reply with it. Without it, customers get a holding message and a human takes over.",
+  },
   {
     handle: "SHOPIFY_REFUND_ACCESS_TOKEN",
     label: "Shopify refund access token",
     optional: true,
+    hint: "Only for the separate, approval-gated refund executor.",
   },
 ];
 
@@ -68,11 +84,13 @@ function SecretRow({
   handle,
   label,
   optional,
+  hint,
   status,
 }: {
   handle: string;
   label: string;
   optional: boolean;
+  hint?: string;
   status?: SecretStatus;
 }) {
   const qc = useQueryClient();
@@ -108,6 +126,7 @@ function SecretRow({
           ) : null}
         </p>
         <p className="truncate text-xs text-quiet">{handle}</p>
+        {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
       </div>
       <div className="flex items-center gap-2">
         <SetBadge set={set} />
@@ -517,6 +536,7 @@ export default function SettingsPage() {
                 handle={s.handle}
                 label={s.label}
                 optional={s.optional}
+                hint={s.hint}
                 status={secretsByHandle.get(s.handle)}
               />
             </div>
