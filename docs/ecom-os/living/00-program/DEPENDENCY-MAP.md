@@ -5,12 +5,12 @@ only current unresolved dependencies.
 
 | Consumer | Provider | Needed interface/deliverable | State | Blocking? | Evidence |
 |---|---|---|---|---|---|
-| A02–A09 | A01 | Identity, request context, common money/time/error/ID contracts, route registration convention | Local commits + source draft, not published to `origin` | Blocks integration beyond isolated fakes | A01 local `core/{errors,ids,money,time,context}.py`, `auth/context.py`, `models/identity.py`; `test_foundation_types.py` + `test_request_context.py` + `test_identity_migration.py` passed `40 passed`; no `origin/agent/a01-foundation` ref observed |
-| A03–A08 | A02 | Trace context, tool invocation, durable action, job/event ports | Not published | Blocks verified tool/action integration | A02 `CURRENT.md` and `INTERFACES.md` are placeholders at `3909904` |
-| A05/A07/A08 | A03 | HermesBridge session/run/channel contracts and capability model | Local source draft, not published | Blocks Hermes-backed workflows and native delivery | A03 local targeted tests passed `33 passed`; no real Hermes probe |
+| A02–A09 | A01 | Identity, request context, common money/time/error/ID contracts, route registration convention | Local commits + source draft, not published to `origin` | Blocks integration beyond isolated fakes | A01 local `core/{errors,ids,money,time,context}.py`, `auth/context.py`, `models/identity.py`; `test_foundation_types.py` + `test_request_context.py` + `test_identity_migration.py` passed `40 passed`; uncommitted identity API/auth files lack targeted evidence; no `origin/agent/a01-foundation` ref observed |
+| A03–A08 | A02 | Trace context, tool invocation, durable action, job/event ports | Local model-only draft, not published | Blocks verified tool/action integration | A02 local `backend/app/models/{events,traces}.py`; no migration/service/API/targeted tests; living `VERIFICATION.md` still says first code slice not implemented |
+| A05/A07/A08 | A03 | HermesBridge session/run/channel contracts and capability model | Local commit + invoker draft, not published | Blocks Hermes-backed workflows and native delivery | A03 local targeted tests passed `38 passed`; no real Hermes probe |
 | A05/A08 | A04 | Exact-bound commerce/order/customer/inbox read models and connector ports | Local source draft, not published | Blocks CS and finance source evidence | A04 local targeted binding/read-model/webhook/action/API tests passed `33 passed`; A02 event/action ports still absent |
 | All route owners | A06 | UI token/component/state contract | Local source/design draft, not published | Blocks final UI integration, but route owners can use local placeholders | A06 local theme/mobile/state/component-lab primitives inspected; targeted Vitest passed `20 passed`; lint inconclusive after manual stop |
-| A09 | All builders | Ready branches with tests, migrations, accepted interfaces, and current living docs | Not available | Blocks integration queue | Only A00 refs are published on `origin`; A01/A09 commits and A01/A03/A04/A05/A06/A07/A08 diffs are local only |
+| A09 | All builders | Ready branches with tests, migrations, accepted interfaces, and current living docs | Not available | Blocks integration queue | Only A00 refs are published on `origin`; A01/A03/A09 commits and A01/A02/A03/A04/A05/A06/A07/A08/A09 diffs are local only |
 | A05 | A02/A04 | Reply/discount/refund action executor plus exact connector attempt/reconciliation ports | Not published | Blocks any external CS write integration | Baseline `backend/app/services/flow_engine.py` sends email and creates discounts directly |
 | A04/A05 | A01/A04 | Exact store/connection/account binding and channel identity | Not published | Blocks connector writes and CS automation | Baseline `backend/app/services/cs_loop.py` selects `stores[0]`; inbox discovery returns first active mail account |
 | A01 | A02 | Audit/trace sink for identity/config changes | Requested locally, not accepted | Blocks production-grade audited identity/admin changes; A01 can use no-op test fake for discovery | Local A01 `INTERFACES.md` diff names `AuditTraceSink` |
@@ -28,7 +28,7 @@ The current critical path is branch/contract establishment, then A01 and A06 fou
 then A02 trace/action/job primitives. A03, A04, A05, A08, and A07 can audit and build
 typed local ports/fakes, but no feature branch is merge-ready until its consumed
 interfaces are accepted and its living docs contain exact verification evidence. CS
-automation must remain fenced or shadow-only until A02 action/trace and A04 exact-binding
+automation must remain fenced or shadow/proposal-only until A02 action/trace and A04 exact-binding
 ports exist. The next programme risks are uncoordinated local interface design and
 unpublished implementation drafts: A01/A03/A04/A05/A06/A07/A08 now name concrete requests
 locally, while A01/A03/A04/A05/A06/A07/A08/A09 have source/config/test evidence that is
