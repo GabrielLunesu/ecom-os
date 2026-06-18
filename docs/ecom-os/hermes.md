@@ -62,11 +62,20 @@ HERMES_GATEWAY_URL=…         # when set, the LLM step routes through a Hermes 
 HERMES_API_KEY=…
 ```
 
+- `CS_RUNTIME=flow` → `FlowCSRuntime` (the **visual flow builder** funnels). Every email
+  is LLM-generated from the per-step prompt via `cs_llm`, which **routes through the
+  Hermes gateway `/delegate` (scoped `cs` profile) when `HERMES_GATEWAY_URL` is set** —
+  using Hermes's own connected provider, so **no Anthropic key is needed on Hermes**. It
+  falls back to a direct Anthropic call (`ANTHROPIC_API_KEY`) for local/standalone runs.
 - `CS_RUNTIME=llm` → `LLMCSRuntime` (Anthropic tool-use loop: read + `create_discount`,
-  escalate, send_reply — **no refund tool**; untrusted text delimited; discounts capped 20%).
+  escalate, send_reply — **no refund tool**; untrusted text delimited).
 - `CS_RUNTIME=hermes` → `HermesRuntime` routes the model step through Hermes's
   gateway `/delegate` with the scoped `cs` profile, and degrades to the direct Anthropic
   path when `HERMES_GATEWAY_URL` is unset.
+
+So on Hermes the recommended setup is `CS_RUNTIME=flow` + `HERMES_GATEWAY_URL` +
+`HERMES_API_KEY` (no Anthropic key): the CS agents you built in the flow builder run on
+Hermes's native agent client / connected LLM provider.
 
 The CS subagent reaches Ecom-OS's tools through the **MCP server** (`backend/app/mcp_server/`):
 

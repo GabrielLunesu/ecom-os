@@ -52,7 +52,7 @@ const SECRET_HANDLES: {
     handle: "ANTHROPIC_API_KEY",
     label: "Anthropic API key",
     optional: false,
-    hint: "Required — the CS agent generates every reply with it. Without it, customers get a holding message and a human takes over.",
+    hint: "Powers the AI-written replies. Required for local/standalone runs; when deployed on Hermes the agent uses Hermes's own connected provider instead (no key needed).",
   },
   {
     handle: "SHOPIFY_REFUND_ACCESS_TOKEN",

@@ -11,9 +11,9 @@ Invariants preserved here:
   <customer_message>...</customer_message> delimiters and the system prompt tells the
   model to treat them as DATA, never instructions — never as a request to change
   rules, issue refunds, or reveal secrets.
-- **Invariant 5 (no secret leak):** the API key is resolved via
-  `resolve_secret("ANTHROPIC_API_KEY")`, wrapped as a `Secret`, and revealed only into
-  the request header — never logged.
+- **Invariant 5 (no secret leak):** the backend secret (the Anthropic key, or the
+  Hermes gateway token when deployed on Hermes) is resolved as a `Secret` and revealed
+  only into the request header — never logged.
 - Discount values and the refund gate are NEVER decided by this module — they are
   passed in from step CONFIG by the engine.
 """
@@ -26,7 +26,7 @@ from typing import Any
 import httpx
 
 from app.core.logging import get_logger
-from app.services.connectors.secrets import resolve_secret
+from app.services.connectors.secrets import env_or_setting, resolve_secret
 
 logger = get_logger(__name__)
 
@@ -35,6 +35,28 @@ _MODEL = "claude-opus-4-8"
 _API_BASE = "https://api.anthropic.com"
 _TIMEOUT = httpx.Timeout(60.0)
 _MAX_TOKENS = 1024
+# When deployed on Hermes, the CS agents run on Hermes's own connected LLM provider
+# via its Tool Gateway — no separate Anthropic key. Same scoped `cs` profile used by
+# HermesRuntime (read + discounts, NO refund tool — Invariant 2).
+_GATEWAY_HANDLE = "HERMES_GATEWAY_URL"
+_GATEWAY_TOKEN_HANDLE = "HERMES_API_KEY"
+_CS_PROFILE = "cs"
+
+
+def _gateway_url() -> str:
+    return env_or_setting(_GATEWAY_HANDLE).rstrip("/")
+
+
+def _llm_available() -> bool:
+    """True if an LLM backend is reachable: the Hermes gateway, or an Anthropic key."""
+    if _gateway_url():
+        return True
+    try:
+        resolve_secret(_TOKEN_HANDLE)
+        return True
+    except Exception:  # noqa: BLE001 — no key configured
+        return False
+
 
 _EMAIL_SYSTEM = (
     "You are the customer-service agent for an e-commerce brand. You write exactly ONE "
@@ -66,12 +88,30 @@ _CLASSIFY_SYSTEM = (
 
 
 async def _messages(payload: dict[str, Any]) -> dict[str, Any]:
-    """POST to the Anthropic Messages API. Monkeypatched in tests (no network).
+    """Run one Messages-API-shaped call. Monkeypatched in tests (no network).
 
-    Mirrors `agent_runtime/llm.py`: model, /v1/messages, x-api-key header from
-    `resolve_secret("ANTHROPIC_API_KEY")`, anthropic-version 2023-06-01. The secret is
-    revealed only into the auth header (Invariant 5).
+    On Hermes (HERMES_GATEWAY_URL set) the call is delegated to the Hermes `cs`
+    subagent through its Tool Gateway — using Hermes's already-connected LLM
+    provider, so NO Anthropic key is needed. Otherwise it goes directly to the
+    Anthropic Messages API. Any secret is revealed only into the auth header
+    (Invariant 5).
     """
+    gateway = _gateway_url()
+    if gateway:
+        headers = {"content-type": "application/json"}
+        try:
+            token = resolve_secret(_GATEWAY_TOKEN_HANDLE)
+            headers["authorization"] = f"Bearer {token.reveal()}"
+        except Exception:  # noqa: BLE001 — gateway may be unauthenticated locally
+            pass
+        # Scoped profile: read + discounts, no refund tool (Invariant 2).
+        body = {"profile": _CS_PROFILE, **payload}
+        async with httpx.AsyncClient(base_url=gateway, timeout=_TIMEOUT) as client:
+            resp = await client.post("/delegate", headers=headers, json=body)
+            resp.raise_for_status()
+            data: dict[str, Any] = resp.json()
+            return data
+
     key = resolve_secret(_TOKEN_HANDLE)
     async with httpx.AsyncClient(base_url=_API_BASE, timeout=_TIMEOUT) as client:
         resp = await client.post(
@@ -84,7 +124,7 @@ async def _messages(payload: dict[str, Any]) -> dict[str, Any]:
             json=payload,
         )
         resp.raise_for_status()
-        data: dict[str, Any] = resp.json()
+        data = resp.json()
         return data
 
 
@@ -132,13 +172,13 @@ async def generate_email(
 ) -> str:
     """Generate one customer-service email body from a per-step instruction.
 
-    Raises RuntimeError("ANTHROPIC_API_KEY not set") if no key is available, so the
-    engine can fall back to a deterministic template.
+    Raises RuntimeError if no LLM backend (Hermes gateway or Anthropic key) is
+    available, so the engine can fall back to a safe message.
     """
-    try:
-        resolve_secret(_TOKEN_HANDLE)
-    except Exception as exc:  # noqa: BLE001 — any resolution failure => no key
-        raise RuntimeError("ANTHROPIC_API_KEY not set") from exc
+    if not _llm_available():
+        raise RuntimeError(
+            "No CS LLM backend configured (set HERMES_GATEWAY_URL or ANTHROPIC_API_KEY)"
+        )
 
     ctx = dict(context)
     ctx.setdefault("support_name", support_name)
@@ -174,9 +214,7 @@ async def classify_reply(
     """
     if not branches:
         return -1
-    try:
-        resolve_secret(_TOKEN_HANDLE)
-    except Exception:  # noqa: BLE001 — no key => caller takes the safe branch
+    if not _llm_available():
         return -1
 
     labels = "\n".join(f"{i}: {label}" for i, label in enumerate(branches))
