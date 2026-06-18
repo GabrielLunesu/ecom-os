@@ -116,7 +116,7 @@ on the real Hermes-session transport using A06 primitives and the proven SSE pat
 ## Implemented v2 (committed at `5f971a7`)
 
 Both modules are pure-Python, no DB migration, fixture-driven (Operating Protocol §7); ruff
-+ mypy clean; 33 new tests pass.
++ mypy clean; 38 new tests pass.
 
 - **`backend/app/tools/`** — canonical tool catalog (`catalog.py`: `ToolDefinition` with all
   §6.1 metadata + `schema_hash`; `ToolCatalog` + `compatibility_hash`; seeded read tools
@@ -125,7 +125,11 @@ Both modules are pure-Python, no DB migration, fixture-driven (Operating Protoco
   (rejects unknown tool, stale version, hash mismatch, bad args **before** execution, §13.4)
   + `redact`. `generators.py`: `to_mcp_tools` / `to_adapter_registration` / `catalog_manifest`
   from the one catalog. Read-tool-that-writes and unbound/unreconcilable write are rejected at
-  definition time. Tests `tests/test_tool_catalog.py`.
+  definition time. `invoker.py` + `trace_port.py`: `ToolInvoker` validates → records a
+  `verified` invocation via a local `TracePort` (`FakeTraceSink`, pending A02/IR-A03-01) →
+  executes the read handler → redacts → returns a trace-linked `ToolResult`; native non-Ecom
+  tool calls recorded `observed`, never `verified` (I-12). Tests `tests/test_tool_catalog.py`,
+  `tests/test_tool_invoker.py`.
 - **`backend/app/hermes/`** — `bridge.py` (`HermesBridge` Protocol, §2.2); `types.py` (typed
   refs/events); `capabilities.py` (flags §3.2, `FEATURE_REQUIREMENTS`, `CompatibilityRecord`,
   `evaluate_feature`); `fake.py` (`FakeHermesTransport` in-memory fixture); `probe.py`

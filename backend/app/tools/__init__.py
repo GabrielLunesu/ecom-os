@@ -30,6 +30,13 @@ from .envelope import (
     UnknownToolError,
     validate_invocation,
 )
+from .invoker import ToolHandler, ToolInvoker
+from .trace_port import (
+    FakeTraceSink,
+    NativeActivityRecord,
+    ToolInvocationRecord,
+    TracePort,
+)
 
 __all__ = [
     "CATALOG",
@@ -47,4 +54,10 @@ __all__ = [
     "ToolStatus",
     "UnknownToolError",
     "validate_invocation",
+    "ToolHandler",
+    "ToolInvoker",
+    "FakeTraceSink",
+    "NativeActivityRecord",
+    "ToolInvocationRecord",
+    "TracePort",
 ]

@@ -44,9 +44,12 @@ Ordered, each behind typed ports + fakes + conformance fixtures (no real Hermes 
    defined once → adapter + MCP schema + validation + hash; unknown/stale version rejected;
    read-with-write-verb rejected. `test_tool_catalog.py`. *Remaining:* migrate the live
    `mcp_server/server.py` to source from the catalog (keep its allowlist + no-refund invariant).
-4. [ ] **Read-tool-in-Hermes + trace correlation spike** → verify: one Ecom-OS read tool
-   appears in a (fixtured) Hermes run, creates a `verified` invocation linked to an A02 trace;
-   native non-Ecom activity labeled `observed`/`unknown`, never `verified`. (Needs IR-A03-01.)
+4. [x] **Read-tool execution + trace correlation** — `app/tools/invoker.py` +
+   `trace_port.py` (local `TracePort` + `FakeTraceSink` pending A02/IR-A03-01). `ecom.order.get`
+   executes → `verified` invocation recorded, correlated to Hermes session/tool-call, sensitive
+   fields redacted; schema mismatch fails before the handler runs; native non-Ecom tool call
+   recorded `observed`, never `verified`. `test_tool_invoker.py` (5 pass). *Remaining:* swap the
+   local port for A02's real ingest; drive a read tool through the real bridge end-to-end.
 5. [ ] **Background run port** (`BackgroundRunPort` over Hermes API-server async run) — bridge
    methods + fake done; remaining: durable-job + lease wrapper; transport timeout →
    `outcome_unknown`, reconcile via `get_run`, no duplicate run. (poll-not-infer proven in fake.)
