@@ -129,6 +129,15 @@ function TicketCard({ ticket, onOpen }: { ticket: Ticket; onOpen: () => void }) 
     >
       <p className="truncate text-sm font-medium text-strong">{ticket.subject}</p>
       <p className="mt-1 truncate text-xs text-quiet">{ticket.customer_email}</p>
+      {ticket.status === "auto_handling" ? (
+        <span className="mt-2 flex items-center gap-1 text-[11px] font-medium text-[color:var(--accent)]">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--accent)] opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[color:var(--accent)]" />
+          </span>
+          drafting…
+        </span>
+      ) : null}
     </motion.button>
   );
 }
@@ -230,6 +239,26 @@ function TicketDrawer({ id, onClose }: { id: string; onClose: () => void }) {
               <p className="whitespace-pre-wrap text-sm text-strong">{m.body}</p>
             </div>
           ))}
+          {d?.status === "auto_handling" ? (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 rounded-lg border border-[color:var(--accent-soft)] bg-[color:var(--accent-soft)] p-3 text-sm font-medium text-[color:var(--accent)]"
+            >
+              <Bot className="h-4 w-4" />
+              <span>Agent is drafting a reply</span>
+              <span className="flex gap-1">
+                {[0, 1, 2].map((j) => (
+                  <motion.span
+                    key={j}
+                    className="h-1.5 w-1.5 rounded-full bg-[color:var(--accent)]"
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1, repeat: Infinity, delay: j * 0.2 }}
+                  />
+                ))}
+              </span>
+            </motion.div>
+          ) : null}
         </div>
       </motion.aside>
     </>
