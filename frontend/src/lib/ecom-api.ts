@@ -240,8 +240,19 @@ export function useAgents() {
 }
 
 // --- Flows (configurable CS SOPs) ---
+/** A branch on a step that waits for a customer reply: the LLM classifies the reply
+ * against `label` and follows `goto` (a step id, or "resolve" / "escalate"). */
+export type FlowBranch = { label: string; goto: string };
 export type FlowStep = {
+  id?: string;
+  // "message" (LLM-generated email) | "request_refund_approval" | "resolve" | "escalate"
+  // | legacy: lookup_order | cite_policy | send_reply | offer_discount
   type: string;
+  prompt?: string; // the per-step LLM instruction (how to write this email)
+  discount_percent?: number; // optional coupon issued with this step
+  goto?: string; // next step when no branches: a step id | "resolve" | "escalate" | "next"
+  branches?: FlowBranch[]; // present => wait for reply, classify, follow a branch
+  // legacy fields (still accepted by the engine)
   message?: string;
   percent?: number;
   slug?: string;
