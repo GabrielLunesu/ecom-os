@@ -13,7 +13,7 @@ last_verified_against: SET_COMMIT_OR_BRANCH_SET
 | A01 | `agent/A01-platform-foundation` | not_started | Platform/identity contracts | — | — |
 | A02 | `agent/A02-durable-core` | not_started | Durable core | — | — |
 | A03 | `agent/A03-hermes-integration` | not_started | Hermes bridge/chat | — | — |
-| A04 | `agent/A04-commerce-connectors` | not_started | Connector/read model | — | — |
+| A04 | `agent/a04-cs` | implementing | Connector/read model | A02 inbox/action ports, A06 UI, A03 catalog (IR-A04-01..05) | 33 A04 tests + full suite (578) green; migration N-1 round-trip; see A04 VERIFICATION.md |
 | A05 | `agent/A05-customer-service` | not_started | CS/autonomy | — | — |
 | A06 | `agent/A06-design-system` | not_started | UI source of truth | — | — |
 | A07 | `agent/A07-operator-workspace` | not_started | Today/tasks/knowledge | — | — |
