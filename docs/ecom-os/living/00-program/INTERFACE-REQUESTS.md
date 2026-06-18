@@ -5,4 +5,4 @@ canonical result into `INTERFACE-REGISTRY.md` and delete the request row.
 
 | ID | Requester | Owner | Contract needed | Proposed shape/link | Blocking | Status |
 |---|---|---|---|---|---|---|
-| — | — | — | — | — | — | — |
+| None | — | — | No unresolved interface requests have been filed yet | — | — | — |
