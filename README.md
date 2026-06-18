@@ -143,8 +143,9 @@ indefinitely. Ask me for anything you need; never invent secrets. Report after e
 8. Expose the dashboard publicly — FREE, no domain, no account. Do NOT ask me for a domain or
    tunnel token. Run `QUICK_TUNNEL=1 ./scripts/deploy/up.sh` (a Cloudflare Quick Tunnel) and read
    the public `https://<random>.trycloudflare.com` URL from the output (or `./scripts/deploy/tunnel-url.sh`);
-   give me that URL — I log in with the LOCAL_AUTH_TOKEN. (The URL changes if it restarts; that's
-   fine. A private option instead: `ssh -L 8080:127.0.0.1:8080 <user>@<vps>` → http://localhost:8080.
+   give me that URL — I log in with the LOCAL_AUTH_TOKEN. (The URL changes if it restarts.) For a FREE *durable*
+   URL with no domain, use Tailscale Funnel instead: ask me for a free Tailscale auth key, then
+   `TS_AUTHKEY=... ./scripts/deploy/tailscale-funnel.sh` -> a permanent https://<host>.<tailnet>.ts.net. A private option instead: `ssh -L 8080:127.0.0.1:8080 <user>@<vps>` → http://localhost:8080.
    Only if I later give you my own domain + TUNNEL_TOKEN, use the stable named tunnel.) That public
    URL is also what realtime needs: set BASE_URL=<that URL> + CORS_ORIGINS=<that URL>, re-run up.sh,
    then POST /api/v1/ecom/realtime/enable and set my Composio project webhook URL from

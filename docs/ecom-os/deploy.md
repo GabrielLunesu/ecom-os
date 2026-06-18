@@ -67,6 +67,19 @@ One-time setup (≈10 min):
 This stable URL is also what **realtime** uses: after step 6, `POST /api/v1/ecom/realtime/enable`
 and set your Composio project webhook URL from `GET /api/v1/ecom/realtime`.
 
+## Completely free + durable: Tailscale Funnel
+
+No domain, no cost, a **permanent** URL, clean HTTPS, no interstitial. The only requirement is
+a free Tailscale account. You get `https://<host>.<tailnet>.ts.net` that never changes.
+
+One-time (free Tailscale account, https://login.tailscale.com/admin):
+1. Settings -> Features: enable **HTTPS Certificates** and **Funnel**.
+2. Settings -> Keys: generate an **auth key**.
+3. On the VPS (stack already running): `TS_AUTHKEY=tskey-... ./scripts/deploy/tailscale-funnel.sh`
+   — it installs Tailscale, joins the tailnet, funnels the dashboard, and prints the URL.
+
+Set `BASE_URL`/`CORS_ORIGINS` to that URL and re-run `up.sh` to also enable realtime.
+
 ## Expose it for free (no domain)
 
 Don't want to buy a domain? Run a **Cloudflare Quick Tunnel** — free, no account, no token,
