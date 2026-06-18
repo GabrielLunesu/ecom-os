@@ -2,29 +2,28 @@
 
 **Hard requirement:** Ecom-OS runs on a **fresh, dedicated VPS that is always on (24/7)**,
 operated by the Hermes agent. The whole app runs as one Docker Compose stack on that box —
-**production builds only, never a dev server** — exposed through a single origin with a real
-HTTPS hostname via Cloudflare Tunnel (no inbound ports opened).
+**production builds only, never a dev server** — exposed through a single origin with HTTPS
+through Tailscale Funnel, Cloudflare Quick Tunnel, or a named Cloudflare Tunnel.
 
 ```
 VPS (Hermes, 24/7)
  └ docker compose -f compose.yml -f compose.prod.yml up -d --build
       db + redis + backend + frontend (next start) + webhook-worker
       + proxy (Caddy):  / → frontend,  /api · /healthz → backend     (single origin, no CORS)
- └ cloudflared  →  https://app.<yourdomain>   (auto-TLS at the edge, no open ports)
+ └ public HTTPS →  Tailscale Funnel (durable, free) or cloudflared (quick/named tunnel)
 ```
 
 Why this shape: one box the agent fully controls, restart-on-failure for durability, a single
-origin (kills CORS/token-leak bugs), and a tunnel so the VPS needs **no inbound ports** — just
-outbound from `cloudflared`.
+origin (kills CORS/token-leak bugs), and a tunnel/funnel so the VPS does not need public inbound
+ports.
 
 ## Steps
 
 1. **Provision** a small always-on VPS; install Docker Engine + Compose v2.
-2. **Configure**: `cp .env.prod.example .env` and fill it in (strong `LOCAL_AUTH_TOKEN`,
-   `COMPOSIO_API_KEY`, `SHOPIFY_STORE_URL`, the inbox + Shopify connections, and `CS_RUNTIME`).
-3. **Tunnel** (recommended): in the Cloudflare dashboard create a Tunnel, route your public
-   hostname → `http://proxy:80`, and paste the token into `TUNNEL_TOKEN`. Set `BASE_URL` and
-   `CORS_ORIGINS` to that hostname.
+2. **Configure**: `cp .env.prod.example .env`, generate a strong `LOCAL_AUTH_TOKEN`, keep
+   `CS_RUNTIME=flow`, and set connector secrets through the Settings API after boot.
+3. **Public URL**: for a free durable URL, use Tailscale Funnel; for a zero-account temporary URL,
+   use `QUICK_TUNNEL=1`; for your own domain, use a named Cloudflare Tunnel.
 4. **Launch**:
    ```bash
    ./scripts/deploy/up.sh
@@ -32,14 +31,17 @@ outbound from `cloudflared`.
    It preflights the config, builds + starts the stack (adds `--profile tunnel` when
    `TUNNEL_TOKEN` is set), and waits for `/healthz`. Stop with `./scripts/deploy/down.sh`.
 5. **Verify**: open the hostname; `GET /api/v1/ecom/connections` (authed) should report Shopify +
-   inbox live ("CS loop ready"). Send a WISMO test email and run the CS loop.
+   inbox live ("CS loop ready"). Send a WISMO test email and run the CS loop twice: first to answer
+   with Shopify context, then after a "No, I haven't received anything" reply to escalate to
+   `needs_rep`.
 
 ## The CS brain on this box
 
-Set `CS_RUNTIME=hermes` (or `llm`) in `.env`. The Hermes agent points its scoped `cs` profile at
-the bundled MCP server (`python -m app.mcp_server`, read + discount tools only — no refund tool)
-and registers a `cronjob` to run the loop continuously. See
-[`docs/ecom-os/hermes.md`](./hermes.md).
+Use `CS_RUNTIME=flow` for the production demo: the visual flow engine owns routing, Shopify
+context, discount/refund guardrails, and human handoff. Later, set `CS_RUNTIME=hermes` (or `llm`)
+only when you want the full model-driven runtime. The Hermes agent can point its scoped `cs`
+profile at the bundled MCP server (`python -m app.mcp_server`, read + discount tools only — no
+refund tool). See [`docs/ecom-os/hermes.md`](./hermes.md).
 
 ## Durable public URL (recommended): cheap domain + Cloudflare named tunnel
 

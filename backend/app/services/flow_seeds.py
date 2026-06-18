@@ -34,10 +34,45 @@ WISMO_FLOW: dict[str, Any] = {
             "prompt": (
                 "Answer this 'where is my order' question. Use the order status and the "
                 "tracking link from CONTEXT, and briefly cite the shipping policy "
-                "excerpt. Be warm, concise, and reassuring. Invite them to reply if "
-                "anything still looks off after checking the tracking page."
+                "excerpt. If the order status says fulfilled, clearly say you can see "
+                "the order has already been fulfilled/shipped. Be warm, concise, and "
+                "reassuring. Ask the customer to reply if they still have not received "
+                "anything so the team can investigate."
             ),
-            "goto": "resolve",
+            "message": (
+                "Hi {customer_name}, I checked {order_name} for you. Shopify currently "
+                "marks it as {order_status}. {fulfillment_phrase}\n\n"
+                "You can check the latest status here: {tracking_url}\n\n"
+                "If you still have not received anything, reply here and I will take it "
+                "higher with our support team.\n\n"
+                "{support_name}"
+            ),
+            "branches": [
+                {"label": "customer is satisfied / found the order", "goto": "resolve"},
+                {
+                    "label": "customer is not satisfied / still has not received anything",
+                    "goto": "escalate_wismo",
+                },
+            ],
+        },
+        {
+            "id": "escalate_wismo",
+            "type": "message",
+            "prompt": (
+                "The customer says they still have not received the order even though "
+                "Shopify context shows it is fulfilled. Apologise, tell them you are "
+                "taking this higher with the support team, and say you will do your best "
+                "to figure out where the order is. Do not promise a refund or replacement."
+            ),
+            "message": (
+                "Hi {customer_name}, I am sorry about that. I can see {order_name} is "
+                "marked as {order_status}, but since you still have not received anything, "
+                "I am taking this higher with our support team.\n\n"
+                "I will do my best to help figure out where your order is and make sure a "
+                "CS rep reviews this from here.\n\n"
+                "{support_name}"
+            ),
+            "goto": "escalate",
         },
     ],
 }

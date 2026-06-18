@@ -63,7 +63,8 @@ SID=$(curl -s -H "Authorization: Bearer $T" http://127.0.0.1:8080/api/v1/ecom/st
 curl -s -X PUT -H "Authorization: Bearer $T" -H "Content-Type: application/json" \
   -d '{"name":"Chicago Outlet Shop","public_url":"chicagooutletshop.com",
        "support_email":"info@chicagooutletshop.com","support_name":"Chicago Outlet Support",
-       "tracking_url":"","facts":"US outlet store. Free returns within 30 days."}' \
+       "tracking_url":"https://chicagooutletshop.com/apps/trackyourorder",
+       "facts":"Chicago Outlet Shop support. Use the tracking page for order status."}' \
   http://127.0.0.1:8080/api/v1/ecom/stores/$SID/profile
 ```
 
@@ -74,23 +75,27 @@ curl -s -X PUT -H "Authorization: Bearer $T" -H "Content-Type: application/json"
    ```bash
    curl -s -X POST -H "Authorization: Bearer $T" http://127.0.0.1:8080/api/v1/ecom/cs/run
    ```
-3. Confirm the ticket resolved + read the reply:
+3. Confirm the ticket is awaiting the customer + read the reply:
    ```bash
    curl -s -H "Authorization: Bearer $T" http://127.0.0.1:8080/api/v1/ecom/tickets
    ```
 4. Check your personal inbox — a styled HTML reply with the tracking link
-   (`https://chicagooutletshop.com/account`) and the "Chicago Outlet Support" signature.
+   (`https://chicagooutletshop.com/apps/trackyourorder`) and the "Chicago Outlet Support"
+   signature.
+5. Reply: `No, I haven't received anything`, run the loop again, and confirm the ticket moved to
+   `needs_rep` after the support-team handoff note.
 
-Also try a **refund**: subject `I want a refund for order #1001` → you get a 10%-off offer (reply
-"no" → 20% → then it files a refund for human approval). Never an auto-refund.
+Also try a **refund**: subject `I want a refund for order #1001` → the refund flow offers the
+configured discount tiers, then files a refund for human approval if the customer still declines.
+Never an auto-refund.
 
 ## 7. Always-on + the dashboard
 - **Always-on:** have the Hermes agent register a `cronjob` every ~2 min that runs the
   `POST /cs/run` curl above. New mail is then handled automatically.
-- **Dashboard UI:** create a Cloudflare Tunnel, route your hostname → `http://proxy:80`, put the
-  `TUNNEL_TOKEN` in `.env`, set `BASE_URL`/`CORS_ORIGINS` to the hostname, re-run `./scripts/deploy/up.sh`.
-  Open the hostname, log in with `LOCAL_AUTH_TOKEN`, and manage flows, store profile, keys, and
-  watch tickets live.
+- **Dashboard UI:** prefer Tailscale Funnel for a free durable URL, or use Cloudflare Quick Tunnel
+  for a temporary free URL. Set `BASE_URL`/`CORS_ORIGINS` to the printed HTTPS URL, re-run
+  `./scripts/deploy/up.sh`, open the URL, log in with `LOCAL_AUTH_TOKEN`, and manage flows, store
+  profile, keys, and tickets live.
 
 ## 8. Upgrade the brain (optional, after the test passes)
 Set `ANTHROPIC_API_KEY` and `CS_RUNTIME=hermes` (or `llm`) in `.env`, re-run `./scripts/deploy/up.sh`.

@@ -152,15 +152,36 @@ async def test_seed_flows_present() -> None:
 
 
 @pytest.mark.asyncio
-async def test_wismo_flow_resolves_with_reply_and_evidence() -> None:
+async def test_wismo_flow_waits_then_resolves_when_customer_is_satisfied() -> None:
     session, brand, shop, inbox = await _setup()
     rt = FlowCSRuntime(shopify=shop, inbox=inbox, store_domain="x.myshopify.com")
     t = await _ticket(session, brand, subject="Where is my order #1001?", body="haven't received #1001")
+    first = await rt.handle_ticket(session, t)
+    assert first.action == "awaiting"
+    assert t.status == "awaiting_customer"
+    # The LLM email is grounded in real order context (name + tracking link) and waits.
+    assert any("#1001" in s["body"] and "/account" in s["body"] for s in inbox.sent)
+
+    await _reply(session, t, "yes I found it, thank you")
     res = await rt.handle_ticket(session, t)
     assert res.action == "auto_resolved"
     assert t.status == "resolved"
-    # The LLM email is grounded in real order context (name + tracking link).
-    assert any("#1001" in s["body"] and "/account" in s["body"] for s in inbox.sent)
+
+
+@pytest.mark.asyncio
+async def test_wismo_flow_escalates_when_customer_still_has_not_received_order() -> None:
+    session, brand, shop, inbox = await _setup()
+    rt = FlowCSRuntime(shopify=shop, inbox=inbox, store_domain="x.myshopify.com")
+    t = await _ticket(session, brand, subject="Where is my order #1001?", body="where is order #1001?")
+    first = await rt.handle_ticket(session, t)
+    assert first.action == "awaiting"
+    assert t.status == "awaiting_customer"
+
+    await _reply(session, t, "No, I haven't received anything")
+    res = await rt.handle_ticket(session, t)
+    assert res.action == "escalated"
+    assert t.status == "needs_rep"
+    assert len(inbox.sent) == 2
 
 
 @pytest.mark.asyncio
@@ -264,6 +285,9 @@ async def test_generation_failure_never_leaks_prompt(monkeypatch: pytest.MonkeyP
     assert prompt and inbox.sent
     body = inbox.sent[-1]["body"]
     assert prompt not in body  # the internal instruction is never sent to the customer
+    assert "#1001" in body
+    assert "fulfilled" in body
+    assert "/account" in body
 
 
 @pytest.mark.asyncio
