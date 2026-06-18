@@ -4,6 +4,16 @@ module.exports = {
   content: ["./src/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      colors: {
+        // Map shadcn primitive tokens to the Ecom-OS theme vars so popovers,
+        // command palette, and menus get a real surface (no transparent dropdowns).
+        popover: "var(--surface)",
+        "popover-foreground": "var(--text)",
+        muted: "var(--surface-muted)",
+        "muted-foreground": "var(--text-muted)",
+        accent: "var(--accent-soft)",
+        "accent-foreground": "var(--text)",
+      },
       fontFamily: {
         // Single typeface (Inter) across the product. Legacy heading/body/display
         // keys are retained so existing classes keep resolving — all map to sans.

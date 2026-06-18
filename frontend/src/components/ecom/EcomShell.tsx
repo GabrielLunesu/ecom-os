@@ -6,7 +6,6 @@ import { StoreProvider } from "./store-context";
 import { EcomSidebar } from "./EcomSidebar";
 import { StoreSwitcher } from "./StoreSwitcher";
 import { CommandPalette } from "./CommandPalette";
-import { PageTransition } from "./PageTransition";
 
 /** The Ecom-OS application shell: fixed sidebar, top bar with the global store
  * switcher, ⌘K palette, and animated page transitions (Build Spec §3, §7). */
@@ -22,9 +21,7 @@ export function EcomShell({ children }: { children: ReactNode }) {
             <div className="text-sm text-quiet">Chicago Outlet · Ops</div>
           </header>
           <main className="min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-[1280px] px-6 py-6">
-              <PageTransition>{children}</PageTransition>
-            </div>
+            <div className="mx-auto max-w-[1280px] px-6 py-6">{children}</div>
           </main>
         </div>
         <CommandPalette />
