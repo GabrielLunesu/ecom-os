@@ -2,7 +2,7 @@
 owner: A04
 branch: agent/a04-cs
 status: implementing
-last_verified_commit: SET_AFTER_CHECKPOINT_COMMIT
+last_verified_commit: 0ee1eac818132a583e52bbf2d23aa301b50897a4
 ---
 
 # A04 — Commerce Connectors and Read Models — Current State
