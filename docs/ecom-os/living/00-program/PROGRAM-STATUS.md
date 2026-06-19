@@ -3,7 +3,7 @@ owner: A00
 baseline_commit: 3909904580732c27a9c6821ef44487c706d6a180
 coordination_branch: agent/a00-orchestrator
 published_alias: coordination/program
-last_verified_against: 999c02af491186adde8208ef126254adcb113e89
+last_verified_against: f8aa6396e05749f26b381d6e979b68fed8c46a69
 ---
 
 # Programme Status
@@ -18,7 +18,7 @@ docs; every builder `CURRENT.md` and `INTERFACES.md`; and
 | A00 | `coordination/program` | `agent/a00-orchestrator`; publication alias `coordination/program` | discovery | Programme baseline and audit queue | Branch name mismatch remains in this branch's normative parallel docs; `origin/main` launch cards confirm the observed branch names | Required reading complete; branch/SHA verified; `origin/main:docs/ecom-os/parallel-build/WORKTREE-SETUP-REPORT.md` inspected |
 | A01 | `agent/A01-platform-foundation` | `agent/a01-foundation` at local commit `6658b82`; no `origin/agent/a01-foundation` ref observed | local `ready_for_integration` claim | Platform/identity contracts | Local source is unpublished; repo-layout decision request needed; A08 has a duplicate Money type to reconcile; consumed ports still need acceptance | Local identity foundation/API/enforcement/health/contracts/redaction slices; ruff and mypy pass; full backend suite `628 passed, 1 xfailed`; branch-local Alembic head `a01_0001_identity` |
 | A02 | `agent/A02-durable-core` | `agent/a02-trace-ledger` at `3909904`; local uncommitted durable-core service/model/migration/docs plus realtime-webhook, board-webhook dispatch, Activity endpoint, queue-worker rollout, and migration-verifier draft | local durable-core + webhook acceptance/dispatch + trace/action Activity + queue migration draft | Durable core | Unpublished source; A02 ports not accepted by consumers yet; integration/E2E wiring still pending; realtime email still uses shared-secret compatibility auth rather than provider-specific raw-body signature verification | Local `backend/app/{actions,events,jobs,traces}/**`, `api/{ecom_webhooks,board_webhooks,activity}.py`, `services/{queue_worker,webhooks/dispatch}.py`, `models/{actions,events,traces}.py`, `scripts/check_postgres_migration_upgrade.py`, migration `a02d1e2f3a4b`; targeted tests `40 passed`; ruff and mypy pass; branch-local Alembic head `a02d1e2f3a4b` |
-| A03 | `agent/A03-hermes-integration` | `agent/a03-hermes-runtime` at local commit `00242ca`; no `origin/agent/a03-hermes-runtime` ref observed | local bridge/catalog/invoker/run/channel/native/compat/chat-gateway/conformance-gate + HTTP/SSE route commit | Hermes bridge/chat | Unpublished source; central router registration remains pending; commit includes an A00-owned programme-file request; real pinned-Hermes conformance evidence still missing; OpenClaw is explicitly compat/dev only; conformance gate is intentionally RED until a real Hermes endpoint is supplied; local owner docs contain stale status/commit text | Local `backend/app/hermes/**`, `backend/app/api/hermes_chat.py`, `backend/app/tools/**`, `backend/app/mcp_server/catalog_server.py`; targeted v2/native/compat/chat-gateway/API/catalog/conformance-gate tests `97 passed`; ruff and mypy pass |
+| A03 | `agent/A03-hermes-integration` | `agent/a03-hermes-runtime` at local commit `4108248`; no `origin/agent/a03-hermes-runtime` ref observed | local bridge/catalog/invoker/run/channel/native/compat/chat-gateway/conformance-gate + HTTP/SSE route + compatibility-matrix/drift-guard commit | Hermes bridge/chat | Unpublished source; central router registration remains pending; historical commit includes an A00-owned programme-file request; real pinned-Hermes conformance evidence still missing; OpenClaw is explicitly compat/dev only; conformance gate is intentionally RED until a real Hermes endpoint is supplied; local owner docs contain stale frontmatter/status and aggregate-count text | Local `backend/app/hermes/**`, `backend/app/api/hermes_chat.py`, `backend/app/tools/**`, `backend/app/mcp_server/catalog_server.py`, `hermes-integration/**`; targeted v2/native/compat/chat-gateway/API/catalog/conformance-gate/drift-guard tests `100 passed`; ruff and mypy pass |
 | A04 | `agent/A04-commerce-connectors` | `agent/a04-cs` at local commit `46ef05d`; no `origin/agent/a04-cs` ref observed | local connector commit | Connector/read model | Local source is unpublished; blocked on accepted A01/A02/A03/A06 contracts | Local `backend/app/connectors/**`, migration `a04commerce01`; targeted tests `33 passed`; branch-local Alembic head `a04commerce01` |
 | A05 | `agent/A05-customer-service` | `agent/a05-finance` at `3909904`; local uncommitted docs plus lifecycle/lease/action-policy/shadow-draft/action-proposal/action-execution/approval/autonomy/handoff/state-surface/state-API source, migrations, and tests | local discovery + invariant/lease/action-policy/shadow-draft/proposal/execution/approval/autonomy/handoff/state-surface/state-API draft | CS/autonomy | Unpublished source; focused mypy fails in `app/services/cs_state_surface.py`; blocked on accepted A02/A03/A04/A06 contracts for production writes; migration upgrade/downgrade against a real test database still pending | Local CS lifecycle/proposal/execution/approval/autonomy/handoff/state-surface/API services, migrations through `a05i2f7c0007`; targeted regression suite `85 passed` with async SQLite cleanup warnings; focused ruff pass; focused mypy fails; branch-local Alembic head `a05i2f7c0007` |
 | A06 | `agent/A06-design-system` | `agent/a06-ui-system` at local commit `a9d870a`; no `origin/agent/a06-ui-system` ref observed | local design-system foundation commit | UI source of truth | Local source is unpublished; commit includes an A00-owned programme file; owner docs still say commit pending/baseline verified; whole-project frontend eslint still fails in A07-owned `brand/page.tsx` | Local frontend typecheck passed; full Vitest `150 passed`; axe a11y subset `10 passed`; A06-owned eslint passed; branch-local commit touches `docs/ecom-os/living/00-program/INTERFACE-REQUESTS.md` |
@@ -29,7 +29,7 @@ docs; every builder `CURRENT.md` and `INTERFACES.md`; and
 ## Current programme statement
 
 The pre-checkpoint `git fetch --all --prune` saw only `origin` agent/programme refs
-`origin/agent/a00-orchestrator` and `origin/coordination/program`, both then at `999c02a`;
+`origin/agent/a00-orchestrator` and `origin/coordination/program`, both then at `f8aa639`;
 this checkpoint publishes the refreshed A00 docs to those same refs.
 Local sibling worktrees have advanced unevenly: A01, A03, A04, A06, and A09 have local commits;
 A02/A05/A07/A08 have unpublished worktree diffs.
@@ -46,9 +46,10 @@ and dispatch, read-only Activity trace/action endpoints, queue-worker rollout co
 owner docs including PostgreSQL migration-upgrade evidence, and focused checks passing;
 A03 has HermesBridge/tool catalog/invoker plus background-run/channel/conformance
 fixtures, an honest native blocked stub, OpenClaw compat/dev transport, catalog MCP server,
-browser chat-gateway allowlist/sanitization, a committed HTTP/SSE chat route, and
-a conformance gate runner that stays RED until real Hermes evidence exists, but still no
-real pinned-Hermes conformance; A04 has a local
+browser chat-gateway allowlist/sanitization, a committed HTTP/SSE chat route,
+compatibility matrix, pinned catalog/capability fixtures, and a conformance gate runner
+that stays RED until real Hermes evidence exists, but still no real pinned-Hermes
+conformance; A04 has a local
 committed connector slice with targeted tests passing; A05 has ticket lifecycle, CS-loop
 lease, action-policy, WISMO shadow-draft, action-proposal, local attempt-execution,
 approval, persisted autonomy-grant/pause, A02/A04 handoff-payload, state-surface, and
