@@ -14,7 +14,8 @@
 | New: tool execution + trace correlation | `uv run python -m pytest tests/test_tool_invoker.py -q` | **5 passed** | this checkpoint |
 | New: BackgroundRunPort (idempotent + poll-not-infer) | `uv run python -m pytest tests/test_hermes_runs.py -q` | **7 passed** | this checkpoint |
 | New: channel/cron delivery contracts | `uv run python -m pytest tests/test_hermes_channels.py -q` | **6 passed** | this checkpoint |
-| New: conformance suite + readiness gate | `uv run python -m pytest tests/test_hermes_conformance.py -q` | **6 passed** | this checkpoint |
+| New: conformance suite + readiness gate (incl. §15.2 tool conformance) | `uv run python -m pytest tests/test_hermes_conformance.py -q` | **7 passed** | this checkpoint |
+| Tool-catalog conformance (§15.2, real evidence) | `app.hermes.conformance_cli` `conformance.tools` | **7/7 pass** (catalog discovery, adapter/MCP parity, unknown/stale/hash rejection, secrets absent) — real Ecom-OS evidence, Hermes-independent | n/a |
 | New: transport boundary + health | `uv run python -m pytest tests/test_hermes_native_health.py -q` | **7 passed** | this checkpoint |
 | New: OpenClaw compat transport | `uv run python -m pytest tests/test_openclaw_compat.py -q` | **9 passed** | this checkpoint |
 | New: catalog→MCP generation | `uv run python -m pytest tests/test_catalog_mcp_server.py -q` | **4 passed** | this checkpoint |

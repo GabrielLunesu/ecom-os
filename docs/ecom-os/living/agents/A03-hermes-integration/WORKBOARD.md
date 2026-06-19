@@ -72,10 +72,12 @@ Ordered, each behind typed ports + fakes + conformance fixtures (no real Hermes 
    `test_hermes_channels.py` (6). *Remaining:* real Hermes messaging/cron transport; A08 owns
    brief content/numbers.
 7. [x] **Conformance suite + readiness gate** — `app/hermes/conformance.py`
-   (`run_conformance_suite` → `ConformanceReport`). Combines protocol + channel checks with
-   capability negotiation; fixture/`is_real=False`, missing mandatory flag, or required-check
-   failure → feature `not_ready` (§15.6); failures listed actionably for `/agents`/System
-   health. `test_hermes_conformance.py` (6).
+   (`run_conformance_suite` → `ConformanceReport`). Combines protocol (§15.1) + channel (§15.5)
+   + **tool-catalog (§15.2)** checks with capability negotiation; fixture/`is_real=False`,
+   missing mandatory flag, or required-check failure → feature `not_ready` (§15.6); failures
+   listed actionably. Tool conformance (`run_tool_conformance`: catalog discovery, adapter/MCP
+   parity, unknown/stale/hash rejection, secrets-absent) is **real Ecom-OS evidence that passes
+   without Hermes**. `test_hermes_conformance.py` (7).
 
 8. [x] **Transport boundary + system-health (DR-A03-01 owner decision)** —
    `HermesNativeTransport` (real-Hermes blocked stub), `OpenClawCompatTransport` (dev/compat,

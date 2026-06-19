@@ -40,6 +40,18 @@ async def test_suite_runs_and_produces_evidence() -> None:
 
 
 @pytest.mark.asyncio
+async def test_tool_conformance_passes_on_real_catalog() -> None:
+    # Tool-catalog conformance (§15.2) is real Ecom-OS evidence — passes without Hermes.
+    report = await run_conformance_suite(FakeHermesTransport())
+    assert report.tools  # tool checks ran
+    assert report.tools_passed is True
+    names = {c.name for c in report.tools}
+    assert "unknown_tool_rejected" in names
+    assert "secrets_absent_from_results" in names
+    assert "adapter_mcp_parity" in names
+
+
+@pytest.mark.asyncio
 async def test_fixture_probe_gates_all_features_not_ready() -> None:
     report = await run_conformance_suite(FakeHermesTransport(), is_real=False)
     assert report.passed is True  # checks themselves pass

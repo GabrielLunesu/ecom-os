@@ -52,6 +52,9 @@ async def hermes_health_snapshot(
             "channels": [
                 {"name": c.name, "passed": c.passed} for c in report.channels
             ],
+            "tools": [
+                {"name": c.name, "passed": c.passed} for c in report.tools
+            ],
             "failures": [c.name for c in report.failures()],
         },
         "features": {
