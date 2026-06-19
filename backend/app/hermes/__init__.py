@@ -26,6 +26,12 @@ from .channels import (
     DeliveryStatus,
     SchedulePort,
 )
+from .chat_gateway import (
+    ALLOWED_COMMANDS,
+    BrowserCommandDenied,
+    ChatIdentity,
+    ChatSessionGateway,
+)
 from .conformance import ConformanceReport, run_conformance_suite
 from .health import hermes_health_snapshot
 from .native import (
@@ -90,4 +96,8 @@ __all__ = [
     "HermesNativeTransport",
     "BackgroundRunPort",
     "RunLeaseError",
+    "ALLOWED_COMMANDS",
+    "BrowserCommandDenied",
+    "ChatIdentity",
+    "ChatSessionGateway",
 ]

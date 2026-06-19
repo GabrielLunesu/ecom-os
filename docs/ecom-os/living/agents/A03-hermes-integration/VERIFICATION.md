@@ -30,6 +30,8 @@
 | Native channel/cron delivery | `ChannelDeliveryService` + fakes (`test_hermes_channels.py`) | fixture pass — delivers once, repeat→duplicate, failure retryable, unmapped→no identity, cron ref | real Hermes messaging/cron transport pending |
 | Degraded capability behavior | `run_conformance_suite` readiness gate (`test_hermes_conformance.py`) | fixture pass — missing mandatory→not_ready (only that feature), missing optional→degraded | gated `not_ready` on fixtures (I-19) until real probe |
 | Conformance evidence + release gate | `uv run python -m app.hermes.conformance_cli` (`test_conformance_gate.py`, 7) | **exit 2 BLOCKED** on fixture — protocol checks pass but gate stays RED; no fixture can turn it green | real-Hermes run is the production gate; same command yields real evidence when IR-A03-05 lands |
+| Browser protocol-safety boundary | `uv run python -m pytest tests/test_chat_gateway.py -q` | **7 passed** — off-allowlist methods denied, no profile escalation, credential fields stripped, reconnect reads status | mount behind A01-auth WS route (IR-A03-02) |
+| All A03 v2 modules (final) | `uv run python -m pytest tests/test_tool_catalog.py tests/test_tool_invoker.py tests/test_catalog_mcp_server.py tests/test_hermes_*.py tests/test_openclaw_compat.py tests/test_conformance_gate.py tests/test_chat_gateway.py -q` | **91 passed** | this checkpoint |
 | Security/invariant checks | catalog rejects read-with-write-verb + unbound write; `validate_invocation` fails stale hash/version before execution; `redact` masks sensitive fields; `test_mcp_server.py` asserts no refund/cancel tool | pass | within the 109 above |
 
 ## Environment notes (for reproducibility)

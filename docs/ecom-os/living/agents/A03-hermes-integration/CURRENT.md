@@ -116,7 +116,7 @@ on the real Hermes-session transport using A06 primitives and the proven SSE pat
 ## Implemented v2 (committed at `5f971a7`)
 
 All pure-Python, no DB migration, fixture-driven (Operating Protocol §7); ruff + mypy clean;
-77 new tests pass. Per the owner decision on DR-A03-01, OpenClaw is a dev/compat transport
+91 new tests pass. Per the owner decision on DR-A03-01, OpenClaw is a dev/compat transport
 only and `HermesNativeTransport` is the real-Hermes seam. Real-Hermes conformance is BLOCKED
 (A03-R02); A01 WS identity and A02 ingest are the remaining seams to swap fakes for
 (IR-A03-01/02). Until a release is pinned, every feature is gated `not_ready` (I-19).
@@ -168,6 +168,15 @@ only and `HermesNativeTransport` is the real-Hermes seam. Real-Hermes conformanc
   a real MCP server from the catalog with per-call validation. The live `mcp_server/server.py`
   (A05-owned CS tool names) is unchanged; it migrates once A05 registers its tools into the
   catalog (registration contract). Tests `tests/test_catalog_mcp_server.py`.
+- **`hermes/chat_gateway.py`** — `ChatSessionGateway`: the browser-facing protocol safety
+  boundary (Runtime §4.1). Only product-approved commands; arbitrary protocol methods
+  (`cli.exec`/`config.set`/`sessions.delete`/secret/sudo) refused — no proxy; profile resolved
+  from authenticated identity (no browser escalation, I-09); events sanitized of credential
+  fields; reconnect reads real status (I-08). Tests `tests/test_chat_gateway.py`.
+- **`hermes/conformance_cli.py`** — `run_conformance_gate`/`evaluate_gate`: transport-selecting
+  release gate; RED (exit ≠ 0) until a real Hermes passes; fixtures/compat can never turn it
+  green. `uv run python -m app.hermes.conformance_cli` → exit 2 BLOCKED. Tests
+  `tests/test_conformance_gate.py`.
 
 These supersede the `/delegate` spike as the architecture. **Real-Hermes conformance is BLOCKED
 (A03-R02)** pending a pinned endpoint; the bridge runs on fixtures (and optionally OpenClaw
