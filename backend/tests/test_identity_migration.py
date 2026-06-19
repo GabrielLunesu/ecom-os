@@ -46,9 +46,7 @@ def _alembic_config() -> Config:
 def _seed_prototype(engine: sa.Engine) -> dict[str, str]:
     # Create every prototype table EXCEPT the identity tables (pre-migration state).
     pre_tables = [
-        table
-        for name, table in SQLModel.metadata.tables.items()
-        if name not in _IDENTITY_TABLES
+        table for name, table in SQLModel.metadata.tables.items() if name not in _IDENTITY_TABLES
     ]
     SQLModel.metadata.create_all(engine, tables=pre_tables)
     with Session(engine) as session:

@@ -122,7 +122,6 @@ async def build_readiness_report(
         overall = HealthState.DEGRADED
 
     components.extend(
-        ComponentHealth(name, HealthState.UNKNOWN, detail)
-        for name, detail in _DEFERRED_DIMENSIONS
+        ComponentHealth(name, HealthState.UNKNOWN, detail) for name, detail in _DEFERRED_DIMENSIONS
     )
     return overall, components

@@ -78,7 +78,9 @@ class TestOwnerBootstrapLocalAuth:
         try:
             app = _build_app(engine)
             async with _client(app) as client:
-                status = (await client.get("/api/v1/identity/bootstrap-status", headers=_AUTH)).json()
+                status = (
+                    await client.get("/api/v1/identity/bootstrap-status", headers=_AUTH)
+                ).json()
                 assert status["is_open"] is True
                 assert status["is_owner"] is False
 
@@ -91,7 +93,9 @@ class TestOwnerBootstrapLocalAuth:
                 assert ROLE_OWNER in me["roles"]
                 assert "identity:write" in me["scopes"]
 
-                status2 = (await client.get("/api/v1/identity/bootstrap-status", headers=_AUTH)).json()
+                status2 = (
+                    await client.get("/api/v1/identity/bootstrap-status", headers=_AUTH)
+                ).json()
                 assert status2["is_open"] is False
                 assert status2["is_owner"] is True
         finally:
