@@ -8,12 +8,29 @@
 
 | Check | Command/fixture | Result | Evidence |
 |---|---|---|---|
-| Static/type checks | `uv run mypy app/connectors` | **pass** | `Success: no issues found in 18 source files` |
-| Lint/format | `uv run ruff check app/connectors` | **pass** | `All checks passed!` (black + isort applied) |
+| Type check (mypy --strict, full app) | `make backend-typecheck` (`uv run mypy`) | **pass** | `Success: no issues found in 214 source files` |
+| flake8 (full backend) | `uv run flake8 --config .flake8` | **pass** | exit 0 (no findings) |
+| isort/black — A04 + connector-domain files | `uv run isort/black --check app/connectors app/services/connectors tests/test_a04_*.py tests/a04_helpers.py tests/test_connector_invariants.py` | **pass** | `would be left unchanged` |
+| ruff (A04 package) | `uv run ruff check app/connectors` | **pass** | `All checks passed!` |
 | A04 unit/contract tests | `uv run pytest tests/test_a04_*.py` | **pass** | `33 passed` |
 | Full regression suite | `uv run pytest` | **pass** | `578 passed, 1 xfailed in 474s` (no regressions) |
-| Migration upgrade/rollback (N-1) | `alembic stamp a0b1c2d3e4f5 → upgrade head → downgrade a0b1c2d3e4f5` | **pass** | 11 commerce tables created on upgrade; 0 after downgrade; version transitions `a0b1c2d3e4f5 ↔ a04commerce01` |
-| Migration graph integrity | `uv run python scripts/check_migration_graph.py` | **pass** | `OK: migration graph integrity passed`; single head `a04commerce01` |
+| Migration upgrade/rollback (N-1, SQLite) | `alembic stamp a0b1c2d3e4f5 → upgrade head → downgrade a0b1c2d3e4f5` | **pass** | 11 commerce tables on upgrade; 0 after downgrade; version `a0b1c2d3e4f5 ↔ a04c0de01` |
+| Migration graph integrity | `uv run python scripts/check_migration_graph.py` | **pass** | `OK: migration graph integrity passed`; single head `a04c0de01` |
+| One-migration-per-PR | `scripts/ci/one_migration_per_pr.sh` | n/a locally (PR-event gate) | exactly 1 added migration `a04c0de01_*` rooted at baseline head `a0b1c2d3e4f5` |
+
+### Gate scope notes (honest)
+
+- `make backend-migration-check` runs the Postgres-container path; **Docker is unavailable
+  in this local worktree**, so the equivalent SQLite N-1 upgrade/downgrade + graph integrity
+  were run instead (above). The Postgres path runs in CI (which provides Docker).
+- Whole-repo `make backend-format-check` is **red due to ~18 pre-existing baseline files in
+  other domains** (e.g. `app/services/chat.py`, `tickets.py`, `metrics.py`, `insight.py`,
+  `agent_runtime/*`, `secret_store.py`, `tests/test_cs_runtime.py`, …) that fail `black` at
+  the baseline commit `3909904` and are **not authored or modified by A04**. All A04-authored
+  files and the connector-domain prototype files A04 reuses are isort/black/flake8/mypy clean.
+  This is pre-existing baseline format debt for the respective owners / A01 baseline cleanup.
+- Frontend gates (`tsc`/`eslint`/`prettier`/`build`): **A04 made zero frontend changes**, so
+  these are unaffected by this branch; they run in CI with Node set up.
 
 ## Acceptance scenarios (handoff Ready-for-integration) — all covered by tests
 

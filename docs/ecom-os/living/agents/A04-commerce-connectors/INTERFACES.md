@@ -28,7 +28,17 @@ backed by tests and a migration. Provider payloads never appear in these contrac
 | UI token/component contract (shadcn/Radix) | A06 | proposed/not_started | `/orders`,`/customers`,connection settings | Build against placeholder primitives; no forked design system |
 | Tool catalog registration framework | A03 | proposed/not_started; **edge A04→A03 missing in dependency graph** | read/write tool manifest | Export a manifest; file interface request (see below) |
 
-## Open requests
+## Cross-domain needs (A04-owned record)
 
-Filed in `../../00-program/INTERFACE-REQUESTS.md` (IDs `IR-A04-01..05`). Do not create a
-private competing contract here.
+A04 does not edit `00-program/**`. These are the contracts A04 needs accepted/versioned
+in `INTERFACE-REGISTRY.md` by their owners. Until then A04 runs behind typed local ports
++ fakes (clearly labelled stand-ins, **not** competing canonical contracts) and swaps to
+the registry contract on acceptance.
+
+| ID | Owner | Contract needed | A04 consumer / local stand-in | Blocking |
+|---|---|---|---|---|
+| IR-A04-01 | A02 | Disambiguate a durable **inbox/event** port from the "Durable action port". A04 needs both: (a) raw-body-verified inbox insert with unique `(source,account,source_event_id)` + outbox; (b) action create/reuse + append-only attempts + state machine incl. `outcome_unknown`. | `durable.py LocalDurableInbox`, `actions.py LocalDurableActionStore` (tables `commerce_provider_events`, `commerce_actions/_attempts`) | webhook ingress + live write path |
+| IR-A04-02 | A01 | Common money(minor+ISO)/time(UTC+source/collected)/ID(UUIDv7+provider-scoped ext)/error types; generated client regen for `/orders`,`/customers`; central registration of the commerce router. | local `to_minor_units`, `utcnow`, typed errors; router in `api.py` awaiting mount | route exposure |
+| IR-A04-03 | A01/A02 | Trace context envelope (`trace_id`/span propagation + coverage labels verified/observed/imported/unknown). | coverage labels in `ports.py`; `primary_trace_id` column reserved | honest trace coverage |
+| IR-A04-04 | A06 | UI token/component contract + page/state patterns + nav entries for `/orders`,`/customers`,connection-settings. | backend read API + read tools ready; React pages pending | UI slice |
+| IR-A04-05 | A03 | Tool-catalog registration path for A04 read tools (`ecom.store.list/order.get/order.search/customer.get`) and write tools. **`A04→A03` edge missing from the dependency graph.** | `tools.py READ_TOOL_MANIFEST` | tool exposure |

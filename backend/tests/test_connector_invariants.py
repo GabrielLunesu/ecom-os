@@ -135,9 +135,7 @@ def test_shopify_connector_exposes_only_read_and_discount() -> None:
 
 
 def test_refund_executor_is_separate_and_gated() -> None:
-    ex = RefundExecutor(
-        ConnectionRef(provider="direct", external_id="stv0xe-c4.myshopify.com")
-    )
+    ex = RefundExecutor(ConnectionRef(provider="direct", external_id="stv0xe-c4.myshopify.com"))
     # Not a ShopifyConnector — never handed to the CS agent.
     assert not isinstance(ex, ShopifyConnector)
 

@@ -68,7 +68,9 @@ def _html_to_text(html: str) -> str:
 
 def normalize_message(m: dict[str, Any]) -> dict[str, Any]:
     """Normalize a Microsoft Graph message into our ticket-ingestion shape."""
-    frm = ((m.get("from") or {}).get("emailAddress") or {}) if isinstance(m.get("from"), dict) else {}
+    frm = (
+        ((m.get("from") or {}).get("emailAddress") or {}) if isinstance(m.get("from"), dict) else {}
+    )
     body = m.get("body") or {}
     content = body.get("content", "")
     text = _html_to_text(content) if body.get("contentType") == "html" else (content or "")

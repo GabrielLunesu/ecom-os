@@ -17,8 +17,13 @@ from tests.a04_helpers import open_session
 
 def _binding(account="store-A"):
     return ConnectionBinding(
-        brand_id=uuid4(), store_id=uuid4(), connection_id=uuid4(),
-        provider="fake", capability="store", account_ref=account, adapter_version="v1",
+        brand_id=uuid4(),
+        store_id=uuid4(),
+        connection_id=uuid4(),
+        provider="fake",
+        capability="store",
+        account_ref=account,
+        adapter_version="v1",
     )
 
 
@@ -33,10 +38,12 @@ async def test_duplicate_intent_executes_side_effect_once() -> None:
         port = FakeCommerceAdapter(binding, backend)
         ex = ActionExecutor(session)
 
-        r1 = await ex.execute(binding, port, action_type="create_discount",
-                              target="discount:VIP10", arguments=ARGS)
-        r2 = await ex.execute(binding, port, action_type="create_discount",
-                              target="discount:VIP10", arguments=ARGS)
+        r1 = await ex.execute(
+            binding, port, action_type="create_discount", target="discount:VIP10", arguments=ARGS
+        )
+        r2 = await ex.execute(
+            binding, port, action_type="create_discount", target="discount:VIP10", arguments=ARGS
+        )
         await session.commit()
 
         assert r1.state == "succeeded" and r1.provider_operation_id
@@ -56,8 +63,9 @@ async def test_wrong_account_write_fails_closed() -> None:
         port = FakeCommerceAdapter(binding, backend)
         ex = ActionExecutor(session)
 
-        result = await ex.execute(binding, port, action_type="create_discount",
-                                  target="discount:VIP10", arguments=ARGS)
+        result = await ex.execute(
+            binding, port, action_type="create_discount", target="discount:VIP10", arguments=ARGS
+        )
         await session.commit()
         # No side effect landed; the action is permanently failed with a reason.
         assert result.state == "failed_permanent"
@@ -76,14 +84,16 @@ async def test_timeout_after_acceptance_reconciles_without_duplicate() -> None:
         port = FakeCommerceAdapter(binding, backend)
         ex = ActionExecutor(session)
 
-        first = await ex.execute(binding, port, action_type="create_discount",
-                                 target="discount:VIP10", arguments=ARGS)
+        first = await ex.execute(
+            binding, port, action_type="create_discount", target="discount:VIP10", arguments=ARGS
+        )
         await session.commit()
         assert first.state == "outcome_unknown" and first.needs_reconcile is True
 
         # A blind retry must NOT re-dispatch while outcome is unknown (I-08).
-        retry = await ex.execute(binding, port, action_type="create_discount",
-                                 target="discount:VIP10", arguments=ARGS)
+        retry = await ex.execute(
+            binding, port, action_type="create_discount", target="discount:VIP10", arguments=ARGS
+        )
         assert retry.state == "outcome_unknown" and retry.deduplicated is True
         assert backend.execute_calls == 1  # still only the original dispatch
 
@@ -117,12 +127,18 @@ async def test_reconcile_reports_absent_side_effect() -> None:
         # Manufacture an outcome_unknown action whose side effect never landed.
         from app.connectors.actions import build_intent_key
         from app.connectors.models import CommerceAction
+
         intent = build_intent_key(binding, "create_discount", "discount:GONE", ARGS)
         action = CommerceAction(
-            brand_id=binding.brand_id, store_id=binding.store_id,
-            connection_id=binding.connection_id, action_type="create_discount",
-            target="discount:GONE", arguments_json=__import__("json").dumps(ARGS),
-            digest="d", idempotency_intent_key=intent, state="outcome_unknown",
+            brand_id=binding.brand_id,
+            store_id=binding.store_id,
+            connection_id=binding.connection_id,
+            action_type="create_discount",
+            target="discount:GONE",
+            arguments_json=__import__("json").dumps(ARGS),
+            digest="d",
+            idempotency_intent_key=intent,
+            state="outcome_unknown",
         )
         session.add(action)
         await session.flush()

@@ -8,12 +8,12 @@ import hashlib
 import hmac
 
 import pytest
+from sqlmodel import func, select
 
 from app.connectors.durable import InboundEvent, LocalDurableInbox
 from app.connectors.errors import WebhookVerificationError
 from app.connectors.models import CommerceProviderEvent
 from app.connectors.webhooks import WebhookContext, accept_webhook, verify_signature
-from sqlmodel import func, select
 from tests.a04_helpers import open_session
 
 SECRET = "whsec_test"

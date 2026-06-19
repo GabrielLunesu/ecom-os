@@ -5,7 +5,7 @@
 - **Connector ports + exact binding + typed errors** (`errors.py`, `binding.py`, `ports.py`). Wrong-account/default/latest rejected closed. ✅ tests
 - **Provider-independent registry + adapters** (`registry.py`, `adapters/{shopify,inbox,fake}.py`). Composio is one adapter; `composio/store` fails closed. ✅ tests
 - **Signed raw-body webhooks + durable inbox** (`webhooks.py`, `durable.py`). Verify→durable insert→dedup-once; invalid signature never persisted. ✅ tests
-- **Normalized commerce models + migration** (`models.py`, `a04commerce01`). 11 tables; minor-unit money; provider refs separate. ✅ migration N-1 round-trip
+- **Normalized commerce models + migration** (`models.py`, `a04c0de01`). 11 tables; minor-unit money; provider refs separate. ✅ migration N-1 round-trip
 - **Sync engine + read repository** (`sync.py`, `read_repository.py`). Idempotent upsert; order by id/customer with evidence; outage→stale last-good. ✅ tests
 - **Durable write path + reconciliation** (`actions.py`). Action digest + intent key, attempts, `outcome_unknown`, reconcile; duplicate-once. ✅ tests
 - **Read tools + message events + commerce read API** (`tools.py`, `events.py`, `api.py`). ✅ tests

@@ -37,13 +37,25 @@ def _order_record(ext: str = "1001", email: str = "amy@x.com") -> dict:
             "source_updated_at": datetime(2024, 1, 1, 0, 0, 0),
         },
         "lines": [
-            {"external_id": "li-1", "title": "Sneaker", "sku": "SNK", "quantity": 1,
-             "price_minor": 4999, "product_external_id": "p-1"}
+            {
+                "external_id": "li-1",
+                "title": "Sneaker",
+                "sku": "SNK",
+                "quantity": 1,
+                "price_minor": 4999,
+                "product_external_id": "p-1",
+            }
         ],
         "fulfillments": [
-            {"external_id": "f-1", "status": "success", "tracking_company": "USPS",
-             "tracking_number": "TRK1", "tracking_url": "http://t/1",
-             "shipped_at": datetime(2024, 1, 2, 0, 0, 0), "source_updated_at": None}
+            {
+                "external_id": "f-1",
+                "status": "success",
+                "tracking_company": "USPS",
+                "tracking_number": "TRK1",
+                "tracking_url": "http://t/1",
+                "shipped_at": datetime(2024, 1, 2, 0, 0, 0),
+                "source_updated_at": None,
+            }
         ],
     }
 
@@ -67,8 +79,13 @@ async def _seed_connection(session, *, store_id, connection_id, account="store-A
 
 def _binding(store_id, connection_id, account="store-A"):
     return ConnectionBinding(
-        brand_id=uuid4(), store_id=store_id, connection_id=connection_id,
-        provider="fake", capability="store", account_ref=account, adapter_version="v1",
+        brand_id=uuid4(),
+        store_id=store_id,
+        connection_id=connection_id,
+        provider="fake",
+        capability="store",
+        account_ref=account,
+        adapter_version="v1",
     )
 
 
@@ -142,7 +159,9 @@ async def test_outage_returns_last_good_marked_stale() -> None:
     async with open_session() as session:
         store_id, connection_id = uuid4(), uuid4()
         # Sync while healthy...
-        await _seed_connection(session, store_id=store_id, connection_id=connection_id, healthy=True)
+        await _seed_connection(
+            session, store_id=store_id, connection_id=connection_id, healthy=True
+        )
         backend = FakeProviderBackend("store-A", orders=[_order_record()])
         reg = build_fake_registry({"store-A": backend})
         binding = _binding(store_id, connection_id)

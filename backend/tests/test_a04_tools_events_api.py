@@ -18,34 +18,62 @@ from app.connectors.events import CollectingSink, ingest_inbox_messages
 from app.connectors.models import Connection
 from app.connectors.read_repository import CommerceReadRepository
 from app.connectors.sync import SyncEngine
-from app.connectors.tools import CommerceReadTools, READ_TOOL_MANIFEST
+from app.connectors.tools import READ_TOOL_MANIFEST, CommerceReadTools
 from app.db.session import get_session
 from tests.a04_helpers import open_session
 
 
 def _order(ext="1001", email="amy@x.com"):
     return {
-        "external_id": ext, "order_number": f"#{ext}", "email": email, "currency": "USD",
-        "total_minor": 4999, "subtotal_minor": 4999, "financial_status": "paid",
-        "fulfillment_status": "fulfilled", "placed_at": datetime(2024, 1, 1),
-        "source_updated_at": datetime(2024, 1, 2), "customer": {
-            "external_id": "cust-9", "email": email, "name": "Amy", "orders_count": 1,
-            "source_updated_at": None}, "lines": [], "fulfillments": [],
+        "external_id": ext,
+        "order_number": f"#{ext}",
+        "email": email,
+        "currency": "USD",
+        "total_minor": 4999,
+        "subtotal_minor": 4999,
+        "financial_status": "paid",
+        "fulfillment_status": "fulfilled",
+        "placed_at": datetime(2024, 1, 1),
+        "source_updated_at": datetime(2024, 1, 2),
+        "customer": {
+            "external_id": "cust-9",
+            "email": email,
+            "name": "Amy",
+            "orders_count": 1,
+            "source_updated_at": None,
+        },
+        "lines": [],
+        "fulfillments": [],
     }
 
 
 async def _seed(session, store_id, connection_id, healthy=True):
-    session.add(Connection(
-        id=connection_id, brand_id=uuid4(), store_id=store_id, provider="fake",
-        capability="store", account_ref="store-A", adapter_version="v1",
-        status="connected" if healthy else "disconnected", last_health_ok=healthy))
+    session.add(
+        Connection(
+            id=connection_id,
+            brand_id=uuid4(),
+            store_id=store_id,
+            provider="fake",
+            capability="store",
+            account_ref="store-A",
+            adapter_version="v1",
+            status="connected" if healthy else "disconnected",
+            last_health_ok=healthy,
+        )
+    )
     await session.flush()
 
 
 def _binding(store_id, connection_id, account="store-A", capability="store"):
     return ConnectionBinding(
-        brand_id=uuid4(), store_id=store_id, connection_id=connection_id, provider="fake",
-        capability=capability, account_ref=account, adapter_version="v1")
+        brand_id=uuid4(),
+        store_id=store_id,
+        connection_id=connection_id,
+        provider="fake",
+        capability=capability,
+        account_ref=account,
+        adapter_version="v1",
+    )
 
 
 def test_read_tool_manifest_is_read_only() -> None:
@@ -80,9 +108,16 @@ async def test_inbox_events_emitted_once_and_untrusted() -> None:
     async with open_session() as session:
         store_id, connection_id = uuid4(), uuid4()
         msgs = [
-            {"external_id": "m1", "conversation_id": "c1", "from_email": "x@y.com",
-             "from_name": "X", "subject": "Where is my order?", "body_text": "hi",
-             "received_at": "2024-01-01T00:00:00Z", "is_read": False},
+            {
+                "external_id": "m1",
+                "conversation_id": "c1",
+                "from_email": "x@y.com",
+                "from_name": "X",
+                "subject": "Where is my order?",
+                "body_text": "hi",
+                "received_at": "2024-01-01T00:00:00Z",
+                "is_read": False,
+            },
         ]
         backend = FakeProviderBackend("ca_1")
         backend.resources["messages"] = msgs

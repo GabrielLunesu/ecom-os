@@ -3,7 +3,7 @@
 ## Safe continuation point
 
 `agent/a04-cs` at the recorded checkpoint (`CURRENT.md last_verified_commit`). The v2
-connector layer is built under `backend/app/connectors/` with migration `a04commerce01`
+connector layer is built under `backend/app/connectors/` with migration `a04c0de01`
 and 33 passing A04 tests; the full suite (578) is green and mypy/ruff are clean. No other
 agent's source was modified; cross-domain needs are filed as `IR-A04-01..05`.
 

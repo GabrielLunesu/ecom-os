@@ -136,9 +136,7 @@ class DirectShopifyConnector(ShopifyConnector):
         return orders
 
     # --- discounts ---------------------------------------------------------
-    async def create_discount(
-        self, *, title: str, percentage: float, code: str
-    ) -> dict[str, Any]:
+    async def create_discount(self, *, title: str, percentage: float, code: str) -> dict[str, Any]:
         # A percentage price rule + a discount code referencing it.
         rule = await self._post(
             "/price_rules.json",

@@ -1,8 +1,8 @@
 ---
 owner: A04
 branch: agent/a04-cs
-status: implementing
-last_verified_commit: 0ee1eac818132a583e52bbf2d23aa301b50897a4
+status: ready_for_integration
+last_verified_commit: SET_AFTER_FINAL_COMMIT
 ---
 
 # A04 — Commerce Connectors and Read Models — Current State
@@ -28,7 +28,7 @@ The repository is the OpenClaw/board-agent platform (FastAPI 0.131 + SQLModel/SQ
 - `ports.py` — `Coverage`/`Freshness`/`Evidence`/`ReadResult`/`ProviderCommand`/`AttemptResult`/`CapabilityDescriptor` and the `ConnectorPort` read/execute/reconcile ABC; `payload_hash`, `to_minor_units` (I-16). No provider payloads in contracts.
 - `registry.py` — provider-independent `ConnectorRegistry`; `default_registry()` wires `direct/store` + `composio/inbox`; `composio/store` fails closed (managed OAuth pending, I-19).
 - `adapters/` — `ShopifyCommerceAdapter` (normalizes raw Admin payloads, reads only), `InboxCommerceAdapter` (pinned Composio account, no first-ACTIVE), `FakeCommerceAdapter`/`FakeProviderBackend` (sandbox + failure fixtures).
-- `models.py` + migration `a04commerce01` — normalized `commerce_connections/orders/order_lines/customers/products/fulfillments/provider_refs/sync_cursors` with source/external_id/source_updated_at/synced_at/coverage; money in minor units; plus A02 stand-in tables `commerce_provider_events` (durable inbox), `commerce_actions`/`commerce_action_attempts`.
+- `models.py` + migration `a04c0de01` — normalized `commerce_connections/orders/order_lines/customers/products/fulfillments/provider_refs/sync_cursors` with source/external_id/source_updated_at/synced_at/coverage; money in minor units; plus A02 stand-in tables `commerce_provider_events` (durable inbox), `commerce_actions`/`commerce_action_attempts`.
 - `webhooks.py` — HMAC raw-body verification (hex + Shopify base64) + `accept_webhook` (verify → durable insert → dedup-once); invalid signature never persisted.
 - `durable.py` — `LocalDurableInbox` (A02 inbox stand-in) with `(source,account_ref,source_event_id)` dedup via SAVEPOINT.
 - `sync.py` — `SyncEngine` initial + incremental + event-driven upsert; idempotent on natural key.
@@ -85,4 +85,4 @@ See `DIAGRAMS.md` (Current vs Target). Today: React Chat → `/ecom/chat` → li
 
 Consumes A01 (trace envelope, common money/time/ID/error types, generated client, central route registration), A02 (durable action + durable inbox/event ports, jobs, traces, evidence), A06 (UI token/component contract), A03 (tool catalog registration path — currently ungraphed). Exposes the **Connector adapter port**, ConnectionBinding, CommerceReadRepository, ProviderExecutionPort, ReconciliationAdapter, normalized sync/inbox events, and read-tool definitions to A02/A05/A08.
 
-All consumed contracts are presently `proposed`/`not_started`; A04 proceeds behind typed local ports + fakes and files interface requests (see `INTERFACES.md` and `../../00-program/INTERFACE-REQUESTS.md`).
+All consumed contracts are presently `proposed`/`not_started`; A04 proceeds behind typed local ports + fakes and records its cross-domain needs in `INTERFACES.md` ("Cross-domain needs"). A04 does not edit `00-program/**`.

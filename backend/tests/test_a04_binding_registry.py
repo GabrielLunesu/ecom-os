@@ -102,7 +102,14 @@ def test_shopify_normalization_minor_units_and_tz() -> None:
         "created_at": "2024-01-02T11:00:00-05:00",
         "updated_at": "2024-01-03T09:00:00-05:00",
         "line_items": [
-            {"id": 1, "title": "Boot", "sku": "BT1", "quantity": 2, "price": "90.00", "product_id": 7}
+            {
+                "id": 1,
+                "title": "Boot",
+                "sku": "BT1",
+                "quantity": 2,
+                "price": "90.00",
+                "product_id": 7,
+            }
         ],
         "customer": {
             "id": 99,
