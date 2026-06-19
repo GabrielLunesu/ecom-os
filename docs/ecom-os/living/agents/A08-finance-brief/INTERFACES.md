@@ -18,6 +18,11 @@
 
 ## Consumes
 
+Accepted registry status: `docs/ecom-os/living/00-program/INTERFACE-REGISTRY.md` still
+lists the A08 metric snapshot contract as `pending/proposed`, and A08's consumed A02/A03/
+A04/A06/A07 contracts are not accepted/versioned yet. Until those rows are accepted, the
+interfaces below are local proposals or unregistered exports only.
+
 | Interface | Owner | Required version/status | Call sites | Fallback/degraded behavior |
 |---|---|---|---|---|
 | Money/time/identity/request context | A01 | pending/proposed | formula inputs, API auth, reporting windows, actor/store scope | Use local typed value objects and fixtures until accepted; no external write or privileged read without exact identity/store scope. |
