@@ -13,6 +13,7 @@ from types import TracebackType
 from typing import Any
 
 from app.core.config import settings
+from app.core.redaction import redact_value
 from app.core.version import APP_NAME, APP_VERSION
 
 TRACE_LEVEL = 5
@@ -209,7 +210,7 @@ class JsonFormatter(logging.Formatter):
         for key, value in record.__dict__.items():
             if key in _STANDARD_LOG_RECORD_ATTRS or key in payload:
                 continue
-            payload[key] = value
+            payload[key] = redact_value(key, value)
         return json.dumps(payload, separators=(",", ":"), default=str)
 
 
@@ -221,7 +222,7 @@ class KeyValueFormatter(logging.Formatter):
         """Render a log line with appended non-standard record fields."""
         base = super().format(record)
         extras = {
-            key: value
+            key: redact_value(key, value)
             for key, value in record.__dict__.items()
             if key not in _STANDARD_LOG_RECORD_ATTRS
         }

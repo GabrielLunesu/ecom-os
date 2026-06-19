@@ -48,6 +48,7 @@ from app.core.logging import (
     set_request_id,
     set_request_route_context,
 )
+from app.core.redaction import redact_mapping
 
 if TYPE_CHECKING:  # pragma: no cover
     from starlette.types import ASGIApp, Message, Receive, Scope, Send
@@ -363,12 +364,16 @@ async def _api_error_exception_handler(
             },
         )
     envelope = exc.to_envelope(trace_id=trace_id, request_id=request_id)
+    content = envelope.model_dump(exclude_none=True)
+    # Defense in depth: caller-supplied details must never carry a secret (I-15).
+    if isinstance(content.get("details"), dict):
+        content["details"] = redact_mapping(content["details"])
     headers = dict(exc.headers) if exc.headers else {}
     if request_id:
         headers.setdefault(REQUEST_ID_HEADER, request_id)
     return JSONResponse(
         status_code=exc.http_status,
-        content=_json_safe(envelope.model_dump(exclude_none=True)),
+        content=_json_safe(content),
         headers=headers or None,
     )
 
