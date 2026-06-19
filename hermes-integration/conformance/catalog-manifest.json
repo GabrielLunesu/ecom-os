@@ -1,0 +1,10 @@
+{
+  "catalog_version": "1.0.0",
+  "compatibility_hash": "sha256:780c7ceeb68b54794797858003bcb5d2c44b53745c498150734fb76a1d74b273",
+  "tools": {
+    "ecom.order.get": "sha256:3d65a3041e394592a58800722117fa14df051f27643cbe40ced03543dfa23ea2",
+    "ecom.order.search": "sha256:8c4271a4e4ec3ef850a8c47f4c46c69f26d522e048f37b0ff78af90fd588b73c",
+    "ecom.store.get": "sha256:b31af1705d40cd67fb818a75d9fb6f3aedb0a8f5984ea9f76e18bb4323accfae",
+    "ecom.trace.search": "sha256:1e5a2dfbdfed8ef992a610e876beb9932b76b1bf1d89f4d2b4ef1b35644d7689"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "required_flags": [
+    "background.approval_response",
+    "background.events",
+    "background.runs",
+    "background.stop",
+    "channels.delivery",
+    "cron.scheduling",
+    "external_tools.adapter",
+    "external_tools.mcp",
+    "interactive.approval_response",
+    "interactive.branch",
+    "interactive.interrupt",
+    "interactive.json_rpc",
+    "interactive.session_create",
+    "interactive.session_history",
+    "interactive.session_resume",
+    "interactive.streaming",
+    "interactive.tool_events",
+    "telemetry.session_hooks",
+    "telemetry.tool_hooks"
+  ],
+  "features": {
+    "background_runs": {
+      "mandatory": ["background.events", "background.runs", "background.stop"],
+      "optional": ["background.approval_response"]
+    },
+    "channels": {
+      "mandatory": ["channels.delivery"],
+      "optional": ["cron.scheduling"]
+    },
+    "external_tools": {
+      "mandatory": ["external_tools.mcp"],
+      "optional": ["external_tools.adapter", "telemetry.tool_hooks"]
+    },
+    "main_chat": {
+      "mandatory": [
+        "interactive.interrupt",
+        "interactive.json_rpc",
+        "interactive.session_create",
+        "interactive.session_history",
+        "interactive.session_resume",
+        "interactive.streaming",
+        "interactive.tool_events"
+      ],
+      "optional": ["interactive.approval_response", "interactive.branch"]
+    }
+  }
+}

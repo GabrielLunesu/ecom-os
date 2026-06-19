@@ -116,7 +116,7 @@ on the real Hermes-session transport using A06 primitives and the proven SSE pat
 ## Implemented v2 (committed at `5f971a7`)
 
 All pure-Python, no DB migration, fixture-driven (Operating Protocol §7); ruff + mypy clean;
-97 new tests pass. Per the owner decision on DR-A03-01, OpenClaw is a dev/compat transport
+100 new tests pass. Per the owner decision on DR-A03-01, OpenClaw is a dev/compat transport
 only and `HermesNativeTransport` is the real-Hermes seam. Real-Hermes conformance is BLOCKED
 (A03-R02); A01 WS identity and A02 ingest are the remaining seams to swap fakes for
 (IR-A03-01/02). Until a release is pinned, every feature is gated `not_ready` (I-19).
@@ -182,6 +182,13 @@ only and `HermesNativeTransport` is the real-Hermes seam. Real-Hermes conformanc
   allowlisted ops via `ChatSessionGateway`; no credential forwarded; profile bound to identity.
   Transport selected from env. Exports `router` only; central registration is A01/A09 (IR-A03-06).
   Tests `tests/test_hermes_chat_api.py`.
+
+- **`hermes-integration/`** — A03-owned conformance fixtures + the normative compatibility
+  matrix (Runtime §17). `COMPATIBILITY.md` pins the Hermes baseline, catalog compatibility
+  hash, capability model, and records conformance status as **BLOCKED**.
+  `conformance/{catalog-manifest,capabilities}.json` pin the contract; drift guard
+  `tests/test_catalog_manifest_pinned.py` fails if the live catalog/capabilities diverge from
+  the checked-in fixtures (AGENTS §9 compatibility-hash discipline).
 
 These supersede the `/delegate` spike as the architecture. **Real-Hermes conformance is BLOCKED
 (A03-R02)** pending a pinned endpoint; the bridge runs on fixtures (and optionally OpenClaw
