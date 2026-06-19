@@ -115,8 +115,10 @@ on the real Hermes-session transport using A06 primitives and the proven SSE pat
 
 ## Implemented v2 (committed at `5f971a7`)
 
-Both modules are pure-Python, no DB migration, fixture-driven (Operating Protocol §7); ruff
-+ mypy clean; 38 new tests pass.
+All pure-Python, no DB migration, fixture-driven (Operating Protocol §7); ruff + mypy clean;
+57 new tests pass. Real-Hermes transport, A01 WS identity, and A02 ingest are the remaining
+seams to swap the fakes for (IR-A03-01/02, DR-A03-01); until a release is pinned, every
+feature is gated `not_ready` (I-19).
 
 - **`backend/app/tools/`** — canonical tool catalog (`catalog.py`: `ToolDefinition` with all
   §6.1 metadata + `schema_hash`; `ToolCatalog` + `compatibility_hash`; seeded read tools
@@ -136,6 +138,19 @@ Both modules are pure-Python, no DB migration, fixture-driven (Operating Protoco
   (`capability_probe` + `run_conformance`, §3.1/§15.1). `is_real=False` on fixtures keeps
   every feature `not_ready` until a real Hermes is pinned (I-19). Tests
   `tests/test_hermes_bridge.py`.
+
+- **`backend/app/hermes/runs.py`** — `BackgroundRunPort` over the bridge: one run per
+  `ecom_job_id` (idempotent, I-07); lease-loss `recover`/`start_or_recover` polls `get_run`
+  before any new attempt (never infer failure, I-08/§5.3); typed `RunStore`/`LeasePort` + fakes
+  pending A02. Tests `tests/test_hermes_runs.py`.
+- **`backend/app/hermes/channels.py`** — `ChannelDeliveryService` + `ChannelDeliveryPort`/
+  `SchedulePort` + identity resolver (Runtime §12, I-17). Idempotent per brief/date/channel
+  (repeat → `duplicate`); failure visible + retryable; unmapped channel user → no privileged
+  identity (I-09). Tests `tests/test_hermes_channels.py`.
+- **`backend/app/hermes/conformance.py`** — `run_conformance_suite` → `ConformanceReport`
+  combining protocol + channel checks with capability negotiation; fixture/missing-mandatory/
+  failed-check → feature `not_ready` (§15.6); actionable failures for `/agents`/System health.
+  Tests `tests/test_hermes_conformance.py`.
 
 These supersede the `/delegate` spike as the architecture; the live `mcp_server/server.py`
 and CS runtime still run on the pre-v2 path and migrate onto the catalog/bridge in later slices.

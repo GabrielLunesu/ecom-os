@@ -9,7 +9,9 @@ interface is `live` yet — gated on a pinned Hermes (I-19).
 | Interface | Version/status | Canonical schema/code | Consumers | Failure semantics |
 |---|---|---|---|---|
 | `HermesBridge` | v0 `port` | `backend/app/hermes/bridge.py` (§2.2) + `fake.py` | A05, A07, A08 | Missing mandatory capability flag → feature `not_ready`; transport loss → reconnect/poll, never infer completion |
-| `BackgroundRunPort` | v0 `port` (bridge methods + fake) | `backend/app/hermes/bridge.py` start/stream/get/stop_run | A05 (ticket runs), A08 (brief narration) | Run always from durable job + lease (wrapper pending); HTTP timeout ≠ failure → `outcome_unknown`/reconcile via `get_run` |
+| `BackgroundRunPort` | v0 `port` | `backend/app/hermes/runs.py` (+ `RunStore`/`LeasePort`) | A05 (ticket runs), A08 (brief narration) | Idempotent per `ecom_job_id`; lease-loss polls `get_run` before any new attempt; HTTP timeout ≠ failure → reconcile, no duplicate |
+| `ChannelDeliveryPort` + `SchedulePort` | v0 `port` | `backend/app/hermes/channels.py` | A08 (brief/alert delivery) | Idempotent per brief/date/channel (repeat → `duplicate`); failure visible+retryable; unmapped channel user → no privileged identity (I-09) |
+| Conformance suite + readiness gate | v0 `port` | `backend/app/hermes/conformance.py` | A09 (System health), A03 `/agents` | Required-check failure / missing mandatory flag / fixture → feature `not_ready` (§15.6) |
 | `SessionReference` | v0 `port` | `backend/app/hermes/types.py` `HermesSessionRef` (§4.3) | A02, A05, A07 | Stores refs + derived metadata only; never canonical transcript; history declares source |
 | Capability flags + compatibility record | v0 `port` | `backend/app/hermes/capabilities.py` + `probe.py` (§3.1/§3.2) | A09 (System health), all feature owners | Probe failure / fixture → dependent feature `not_ready`, visible in `/system` |
 | Tool catalog + generator | v1 `port` | `backend/app/tools/{catalog,envelope,generators}.py` (§6.1) | A04/A05/A07/A08 register tool defs; A03 emits adapter+MCP schema | Schema-hash/version/arg mismatch fails before domain execution (§13.4) |

@@ -19,6 +19,15 @@ from .capabilities import (
     FeatureReadiness,
     evaluate_feature,
 )
+from .channels import (
+    ChannelDeliveryService,
+    DeliveryIntent,
+    DeliveryReceipt,
+    DeliveryStatus,
+    SchedulePort,
+)
+from .conformance import ConformanceReport, run_conformance_suite
+from .runs import BackgroundRunPort, RunLeaseError
 from .types import (
     BackgroundRunRequest,
     CreateSession,
@@ -55,4 +64,13 @@ __all__ = [
     "HermesSessionStatus",
     "HermesSessionSummary",
     "InteractivePrompt",
+    "ChannelDeliveryService",
+    "DeliveryIntent",
+    "DeliveryReceipt",
+    "DeliveryStatus",
+    "SchedulePort",
+    "ConformanceReport",
+    "run_conformance_suite",
+    "BackgroundRunPort",
+    "RunLeaseError",
 ]
