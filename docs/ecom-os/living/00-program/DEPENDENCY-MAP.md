@@ -18,7 +18,7 @@ only current unresolved dependencies.
 | A06 | A02/A04/A05/A07/A08 | Durable action/trace/evidence shapes, entity-summary shape, and metric/KPI freshness/coverage shape | Requested locally, not accepted | Blocks final entity/action/trace/KPI card contracts; local fakes allowed | Local A06 `INTERFACES.md` and A06 programme-file diff name A02/A04/A05/A07/A08 dependencies; IR-026 added for entity summary |
 | A04 | A02/A03/A01 | Durable inbox/action/event ports, tool catalog registration, common types/client workflow | Requested locally, not accepted | Blocks connector webhook/read-tool integration | Local A04 `INTERFACES.md` names these dependencies |
 | A07 | A02/A03/A05/A08/A06 | Ask-Hermes launch, tool registration, trace/evidence refs, CS attention source, brief/metric source, UI states | Requested locally, not accepted | Blocks Today/tasks/knowledge integration | Local A07 `INTERFACES.md` names these dependencies |
-| A08 | A02/A03/A04/A07/A06/A09 | Economics source port, trace/evidence/jobs, narration/channel delivery, task/research inputs, `/finance` route/nav | Requested locally, not accepted; broader backend regression currently fails | Blocks finance and daily brief integration | Local A08 `INTERFACES.md` names these dependencies; A00 observed daily-brief tool manifest/test mismatch |
+| A08 | A02/A03/A04/A07/A06/A09 | Economics source port, trace/evidence/jobs, narration/channel delivery, task/research inputs, `/finance` route/nav | Requested locally, not accepted | Blocks finance and daily brief integration | Local A08 `INTERFACES.md` names these dependencies; delivery-packet regression now passes locally |
 | A09 | A01/A02/A04/A05/A07/A08/A09 | Migration graph from local implementation drafts | Not accepted | Blocks any integration of new migrations | Branch-local heads observed: A01 `a01_0001_identity`, A02 `a02d1e2f3a4b`, A04 `a04commerce01`, A05 `a05i2f7c0007`, A08 `a08_001_metric_snapshots`, A09 `a09c1d2e3f40`; A07 draft revises older `e2f9c6b4a1d3` |
 | A08 | A01 | Shared Money type / money wire shape | Conflict observed locally | Blocks finance integration until reconciled | A01 defines `app.core.money.Money(minor_units,currency)`; A08 defines `app.metrics.formulas.Money(minor,currency)` |
 
@@ -34,5 +34,5 @@ local interface design, stale local owner docs, and unpublished implementation d
 A01/A03/A04/A05/A06/A07/A08 now name concrete requests locally, while
 A01/A02/A03/A04/A05/A06/A07/A08/A09 have source/config/test evidence that is not visible
 through `origin` and not yet migration-graph or integration-gate verified. Fresh A00 checks
-also show A08 has a failing broader backend regression and A09's new readiness tool has
-ruff/mypy failures.
+also show A05 has expanded focused mypy failures and A09's new readiness tool has ruff/mypy
+failures.
