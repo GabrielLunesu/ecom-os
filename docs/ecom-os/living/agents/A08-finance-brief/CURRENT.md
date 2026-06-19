@@ -2,7 +2,7 @@
 owner: A08
 branch: agent/a08-ops-briefs
 status: integration_blocked
-last_verified_commit: 175aaf0
+last_verified_commit: c6bddec
 ---
 
 # A08 — Finance, Metric Evidence, and Daily Brief — Current State
@@ -26,8 +26,9 @@ Build deterministic estimated contribution margin, metric snapshots/evidence, Fi
   margin formula over integer minor-unit `Money`, explicit ISO currency, local-day
   reporting windows, component signs, source coverage/freshness, source precedence, FX
   basis metadata, attribution-window metadata, warnings, and reconciliation to component
-  contributions. UI integration, production source wiring, and daily brief composition
-  still need to be built.
+  contributions. Local Finance UI integration and daily brief composition are now built;
+  production source wiring remains pending on accepted A01/A02/A03/A04/A06/A07
+  contracts.
 - A08 now has persistent metric snapshot/component records in
   `backend/app/metrics/models.py`, imported through `backend/app/models/__init__.py` for
   SQLModel metadata discovery, and migration

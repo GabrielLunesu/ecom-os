@@ -2,7 +2,11 @@
 
 ## Latest verified commit
 
-`175aaf0`
+`c6bddec`
+
+Implementation code gates were run at `175aaf0`. Commits `610aac9` and `c6bddec` are
+A08-owned living-doc updates verified by `git diff --check`, targeted markdown lint, and
+remote-ref inspection.
 
 ## Required checks
 
