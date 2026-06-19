@@ -3,7 +3,7 @@ owner: A00
 baseline_commit: 3909904580732c27a9c6821ef44487c706d6a180
 coordination_branch: agent/a00-orchestrator
 published_alias: coordination/program
-last_verified_against: 36df233b75133ded76b711acbbf9ba9417938db1
+last_verified_against: 999c02af491186adde8208ef126254adcb113e89
 ---
 
 # Programme Status
@@ -23,13 +23,13 @@ docs; every builder `CURRENT.md` and `INTERFACES.md`; and
 | A05 | `agent/A05-customer-service` | `agent/a05-finance` at `3909904`; local uncommitted docs plus lifecycle/lease/action-policy/shadow-draft/action-proposal/action-execution/approval/autonomy/handoff/state-surface/state-API source, migrations, and tests | local discovery + invariant/lease/action-policy/shadow-draft/proposal/execution/approval/autonomy/handoff/state-surface/state-API draft | CS/autonomy | Unpublished source; focused mypy fails in `app/services/cs_state_surface.py`; blocked on accepted A02/A03/A04/A06 contracts for production writes; migration upgrade/downgrade against a real test database still pending | Local CS lifecycle/proposal/execution/approval/autonomy/handoff/state-surface/API services, migrations through `a05i2f7c0007`; targeted regression suite `85 passed` with async SQLite cleanup warnings; focused ruff pass; focused mypy fails; branch-local Alembic head `a05i2f7c0007` |
 | A06 | `agent/A06-design-system` | `agent/a06-ui-system` at local commit `a9d870a`; no `origin/agent/a06-ui-system` ref observed | local design-system foundation commit | UI source of truth | Local source is unpublished; commit includes an A00-owned programme file; owner docs still say commit pending/baseline verified; whole-project frontend eslint still fails in A07-owned `brand/page.tsx` | Local frontend typecheck passed; full Vitest `150 passed`; axe a11y subset `10 passed`; A06-owned eslint passed; branch-local commit touches `docs/ecom-os/living/00-program/INTERFACE-REQUESTS.md` |
 | A07 | `agent/A07-operator-workspace` | `agent/a07-chat` at `3909904`; local uncommitted docs plus API/service/schema/migration/test/frontend workspace draft | local discovery + workspace/knowledge draft | Today/tasks/knowledge | Unpublished source; migration down-revision is not current baseline head | Local operator workspace API/service/schema/model/migration and frontend API/test; backend targeted tests `6 passed`; frontend Vitest `2 passed` |
-| A08 | `agent/A08-finance-brief` | `agent/a08-ops-briefs` at `3909904`; local uncommitted docs plus source/migration/test/API/tool/daily-brief-tool draft, including A00-owned programme file | local discovery + formula/model/service/API/tool/brief draft | Finance/daily brief | Unpublished source; migration will conflict with other branch-local heads; duplicate Money type vs A01; blocked on A01/A02/A03/A04/A06/A07 contracts | Local metrics formulas/models/read models/snapshot service/API/legacy source/tools/daily briefs/migration; targeted tests `27 passed`; branch-local Alembic head `a08_001_metric_snapshots` |
-| A09 | `agent/A09-production-integration` | `agent/a09-integration` at local commit `6d8b1e3`; no `origin/agent/a09-integration` ref observed | local CI/health/maintenance/backup/restore/release/extensions/E2E commit + runbook docs | Production/integration | Local source is unpublished; integration gate remains closed; live Docker/Postgres N-1 restore drill and domain-branch wiring remain pending; owner docs still contain stale builder-baseline gate text | Commits through `docs(A09): operator runbooks...`; expanded operations tests `54 passed`; import-boundary check passed; branch-local Alembic head `a09c1d2e3f40` |
+| A08 | `agent/A08-finance-brief` | `agent/a08-ops-briefs` at `3909904`; local uncommitted docs plus source/migration/test/API/tool/daily-brief generation draft, including A00-owned programme file | local discovery + formula/model/service/API/tool/brief/generation draft | Finance/daily brief | Unpublished source; broad backend regression fails in `test_a08_daily_brief_tools.py`; migration will conflict with other branch-local heads; duplicate Money type vs A01; blocked on A01/A02/A03/A04/A06/A07 contracts | Local metrics formulas/models/read models/snapshot service/API/legacy source/tools/daily briefs/generation/migration; narrow A08 suite `36 passed`; broader documented regression `54 passed, 1 failed`; ruff/mypy pass; branch-local Alembic head `a08_001_metric_snapshots` |
+| A09 | `agent/A09-production-integration` | `agent/a09-integration` at local commit `272e65c`; no `origin/agent/a09-integration` ref observed | local CI/health/maintenance/backup/restore/release/extensions/E2E + branch-readiness/migration-head tooling commit | Production/integration | Local source is unpublished; new `scripts/ci/branch_readiness.py` fails ruff/mypy; integration gate remains closed; live Docker/Postgres N-1 restore drill and domain-branch wiring remain pending; owner docs still name older latest verified commit | Local branch-readiness tool reports every builder NOT READY; migration graph and migration-head scripts pass with required env; operations tests `54 passed`; branch-readiness ruff/mypy fail; branch-local Alembic head `a09c1d2e3f40` |
 
 ## Current programme statement
 
 The pre-checkpoint `git fetch --all --prune` saw only `origin` agent/programme refs
-`origin/agent/a00-orchestrator` and `origin/coordination/program`, both then at `36df233`;
+`origin/agent/a00-orchestrator` and `origin/coordination/program`, both then at `999c02a`;
 this checkpoint publishes the refreshed A00 docs to those same refs.
 Local sibling worktrees have advanced unevenly: A01, A03, A04, A06, and A09 have local commits;
 A02/A05/A07/A08 have unpublished worktree diffs.
@@ -58,10 +58,12 @@ but includes an A00-owned programme-file edit and whole-project frontend lint fa
 A07-owned brand UI; A07 has operator workspace backend and frontend tests passing but its
 migration revises an older migration (`e2f9c6b4a1d3`) instead of the current baseline head
 (`a0b1c2d3e4f5`); A08 has deterministic metric formula/model/read-model/service/API,
-legacy-source, read-tool, daily-brief, and daily-brief-tool tests passing, a migration that
-revises current baseline head, and a duplicate Money type relative to A01; A09 has local
-CI/security, System health, maintenance, backup/restore, release/update, extensions, and
-operational E2E evidence passing. These need owner pushes, exact verification evidence in
+legacy-source, read-tool, daily-brief, and daily-brief generation work, but its broader
+backend regression now fails on daily-brief tool definitions; it also has a migration that
+revises current baseline head and a duplicate Money type relative to A01; A09 has local
+CI/security, System health, maintenance, backup/restore, release/update, extensions,
+operational E2E, branch-readiness, and migration-head tooling, but the new branch-readiness
+script is not ruff/mypy clean. These need owner pushes, exact verification evidence in
 living docs, accepted dependencies, and A09 migration-head handling before queueing.
 
 A03 and A06 have committed edits, and A08 has local edits, to A00-owned files under
