@@ -94,10 +94,14 @@ Ordered, each behind typed ports + fakes + conformance fixtures (no real Hermes 
   `config.set`/`sessions.delete`/secret/sudo refused — no proxy); profile resolved from
   authenticated identity, not browser-chosen; events sanitized of credential-like fields; no
   service credential to browser; reconnect reads real status. `test_chat_gateway.py` (7).
-- **Buildable now:** wire `HermesNativeTransport` real protocol once an endpoint exists; expose
-  the health/capability snapshot via an A09-registered `/system` route (IR pending); mount the
-  chat gateway behind an A01-authenticated WS route (IR-A03-02); `OpenClawCompatTransport`
-  enables `/chat` dev against a local gateway.
+- [x] **Chat HTTP/SSE router** — `app/api/hermes_chat.py` exposes `/hermes/health`, session
+  list/create/resume/history/status/interrupt, and `POST /sessions/{id}/messages` SSE stream of
+  safe events. Injectable bridge + identity deps; transport selected from env (fixture/compat/
+  native). `test_hermes_chat_api.py` (5). Needs central registration in `main.py` (IR-A03-06)
+  and A01 identity→profile mapping (IR-A03-02).
+- **Buildable now:** wire `HermesNativeTransport` real protocol once an endpoint exists; the
+  `/hermes/health` route already serves the capability snapshot (register via IR-A03-06);
+  `OpenClawCompatTransport` enables `/chat` dev against a local gateway.
 - **Blocked (A03-R02):** real canonical resumed session, streamed tool events, reconnect, and
   conformance against a pinned Hermes — needs a real Hermes v0.16.0 endpoint/credentials/install.
 - **Blocked on peers:** `/chat` + `/agents` UI needs A06 primitives (not_started) and the real

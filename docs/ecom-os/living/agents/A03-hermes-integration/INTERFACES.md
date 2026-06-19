@@ -21,7 +21,8 @@ interface is `live` yet — gated on a pinned Hermes (I-19).
 | Narration request | v0 `proposed` | `backend/app/hermes/narration.py` | A08 daily brief | Hermes/model down → deterministic fallback; narration never computes numbers |
 | `ChannelDeliveryPort` | v0 `proposed` | `backend/app/hermes/channels.py` (Runtime Spec §12) | A08 (brief/alert delivery) | Identity unmapped → no privileged identity; delivery intent + idempotency key |
 | `SchedulePort` (cron) | v0 `proposed` | `backend/app/hermes/schedule.py` (Runtime Spec §12.3) | A08 | Missing `cron.scheduling` flag degrades scheduled delivery only |
-| Chat protocol-safety gateway | v0 `port` | `backend/app/hermes/chat_gateway.py` `ChatSessionGateway` | `/chat` WS route (A01-auth, A09/A01 registration) | Off-allowlist command → `BrowserCommandDenied`; no profile escalation; no credential to browser; reconnect reads status |
+| Chat protocol-safety gateway | v0 `port` | `backend/app/hermes/chat_gateway.py` `ChatSessionGateway` | mounted by `api/hermes_chat.py` | Off-allowlist command → `BrowserCommandDenied`; no profile escalation; no credential to browser; reconnect reads status |
+| Chat HTTP/SSE router (`/hermes/*`) | v0 `port` | `backend/app/api/hermes_chat.py` `router` | browser `/chat`; A01/A09 register in `main.py` (IR-A03-06) | Only allowlisted ops exposed; `/hermes/health` reports `conformance_blocked` honestly; SSE frames sanitized |
 | Conformance gate runner | v0 `port` | `backend/app/hermes/conformance_cli.py` | A09 release gate / CI | Exit ≠ 0 (RED) until a real Hermes passes; fixtures never green |
 | `/chat`, `/agents` routes | `proposed` | `frontend/src/app/chat`, `/agents` | operators | Loading/empty/stale/unavailable/permission/error + reconnect states |
 
