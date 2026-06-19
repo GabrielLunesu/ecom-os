@@ -95,9 +95,7 @@ class ToolDefinition:
 
     def __post_init__(self) -> None:
         if not _NAME_RE.match(self.name):
-            raise ValueError(
-                f"tool name {self.name!r} must match 'ecom.<namespace>.<verb>'"
-            )
+            raise ValueError(f"tool name {self.name!r} must match 'ecom.<namespace>.<verb>'")
         verb = self.name.rsplit(".", 1)[1]
         is_write_verb = any(verb == v or verb.startswith(f"{v}_") for v in _WRITE_VERBS)
         if is_write_verb and self.read_or_write is not ReadOrWrite.write:
@@ -108,13 +106,9 @@ class ToolDefinition:
         if self.read_or_write is ReadOrWrite.write:
             # A write must be reconcilable and bound to a connection (I-06/I-07/I-08).
             if not self.required_connection_types:
-                raise ValueError(
-                    f"write tool {self.name!r} must declare required_connection_types"
-                )
+                raise ValueError(f"write tool {self.name!r} must declare required_connection_types")
             if self.reconciliation_strategy is ReconciliationStrategy.none:
-                raise ValueError(
-                    f"write tool {self.name!r} must declare a reconciliation_strategy"
-                )
+                raise ValueError(f"write tool {self.name!r} must declare a reconciliation_strategy")
         if self.store_scope_rule not in {"none", "optional", "required"}:
             raise ValueError(f"invalid store_scope_rule {self.store_scope_rule!r}")
 
@@ -251,9 +245,7 @@ CATALOG.register(
             {"store_id": {"type": "string"}, "query": {"type": "string"}},
             ["store_id", "query"],
         ),
-        output_schema=_obj(
-            {"count": {"type": "integer"}, "orders": {"type": "array"}}
-        ),
+        output_schema=_obj({"count": {"type": "integer"}, "orders": {"type": "array"}}),
         read_or_write=ReadOrWrite.read,
         risk_class=RiskClass.none,
         store_scope_rule="required",
@@ -274,9 +266,7 @@ CATALOG.register(
                 "limit": {"type": "integer"},
             }
         ),
-        output_schema=_obj(
-            {"count": {"type": "integer"}, "traces": {"type": "array"}}
-        ),
+        output_schema=_obj({"count": {"type": "integer"}, "traces": {"type": "array"}}),
         read_or_write=ReadOrWrite.read,
         risk_class=RiskClass.none,
         store_scope_rule="none",

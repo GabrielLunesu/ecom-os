@@ -104,9 +104,7 @@ def _validate_arguments(definition: ToolDefinition, arguments: dict[str, object]
     required_raw = schema.get("required", [])
     properties_raw = schema.get("properties", {})
     required: set[str] = set(required_raw) if isinstance(required_raw, list) else set()
-    properties: dict[str, object] = (
-        properties_raw if isinstance(properties_raw, dict) else {}
-    )
+    properties: dict[str, object] = properties_raw if isinstance(properties_raw, dict) else {}
     missing = required - set(arguments)
     if missing:
         raise SchemaMismatchError(
@@ -115,14 +113,10 @@ def _validate_arguments(definition: ToolDefinition, arguments: dict[str, object]
     if schema.get("additionalProperties") is False:
         unknown = set(arguments) - set(properties)
         if unknown:
-            raise SchemaMismatchError(
-                f"{definition.name}: unknown arguments {sorted(unknown)}"
-            )
+            raise SchemaMismatchError(f"{definition.name}: unknown arguments {sorted(unknown)}")
 
 
-def validate_invocation(
-    catalog: ToolCatalog, invocation: ToolInvocation
-) -> ToolDefinition:
+def validate_invocation(catalog: ToolCatalog, invocation: ToolInvocation) -> ToolDefinition:
     """Resolve and validate an invocation against the catalog before execution.
 
     Raises ``UnknownToolError`` for an unregistered tool, ``SchemaMismatchError`` for a

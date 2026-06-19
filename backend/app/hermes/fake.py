@@ -143,9 +143,7 @@ class FakeHermesTransport:
         session = self._require(ref)
         return HermesSessionStatus(ref=ref, state=session["state"])
 
-    async def submit_prompt(
-        self, request: InteractivePrompt
-    ) -> AsyncIterator[HermesEvent]:
+    async def submit_prompt(self, request: InteractivePrompt) -> AsyncIterator[HermesEvent]:
         session = self._require(request.ref)
         sid = request.ref.session_id
         history = session["history"]

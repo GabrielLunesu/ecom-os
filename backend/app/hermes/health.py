@@ -46,19 +46,10 @@ async def hermes_health_snapshot(
         },
         "conformance": {
             "passed": report.passed,
-            "protocol": [
-                {"name": c.name, "passed": c.passed} for c in report.protocol
-            ],
-            "channels": [
-                {"name": c.name, "passed": c.passed} for c in report.channels
-            ],
-            "tools": [
-                {"name": c.name, "passed": c.passed} for c in report.tools
-            ],
+            "protocol": [{"name": c.name, "passed": c.passed} for c in report.protocol],
+            "channels": [{"name": c.name, "passed": c.passed} for c in report.channels],
+            "tools": [{"name": c.name, "passed": c.passed} for c in report.tools],
             "failures": [c.name for c in report.failures()],
         },
-        "features": {
-            name: readiness.value
-            for name, readiness in report.feature_readiness.items()
-        },
+        "features": {name: readiness.value for name, readiness in report.feature_readiness.items()},
     }

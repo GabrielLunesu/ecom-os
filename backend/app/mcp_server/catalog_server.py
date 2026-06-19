@@ -20,8 +20,7 @@ from mcp.server.lowlevel import Server
 
 from app.core.logging import get_logger
 from app.tools.catalog import CATALOG, ToolCatalog
-from app.tools.envelope import SchemaMismatchError, validate_invocation
-from app.tools.envelope import ToolInvocation
+from app.tools.envelope import SchemaMismatchError, ToolInvocation, validate_invocation
 from app.tools.generators import to_mcp_tools
 
 logger = get_logger(__name__)
@@ -41,10 +40,7 @@ def build_catalog_handlers(
     Each wrapped handler builds a ``ToolInvocation`` at the catalog's current version/hash and
     runs ``validate_invocation`` so unknown args / schema drift fail before the handler runs.
     """
-    allowed = {
-        d.name
-        for d in catalog.definitions(allowlist)
-    }
+    allowed = {d.name for d in catalog.definitions(allowlist)}
     wrapped: dict[str, CatalogHandler] = {}
     for name, handler in handlers.items():
         if name not in allowed:

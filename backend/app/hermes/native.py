@@ -109,9 +109,7 @@ class HermesNativeTransport:
         self._guard()
         raise AssertionError("unreachable")
 
-    async def submit_prompt(
-        self, request: InteractivePrompt
-    ) -> AsyncIterator[HermesEvent]:
+    async def submit_prompt(self, request: InteractivePrompt) -> AsyncIterator[HermesEvent]:
         self._guard()
         raise AssertionError("unreachable")
         yield  # pragma: no cover - makes this an async generator

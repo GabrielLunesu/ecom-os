@@ -27,9 +27,7 @@ class MappedIdentity:
 
 
 class ChannelIdentityResolver(Protocol):
-    async def resolve(
-        self, channel: str, external_user_id: str
-    ) -> MappedIdentity | None: ...
+    async def resolve(self, channel: str, external_user_id: str) -> MappedIdentity | None: ...
 
 
 @dataclass(frozen=True)
@@ -113,9 +111,7 @@ class ChannelDeliveryService:
         try:
             provider_id = await self._transport.send(intent)
         except Exception as exc:  # noqa: BLE001 - surface as a visible, retryable failure
-            receipt = DeliveryReceipt(
-                intent=intent, status=DeliveryStatus.failed, error=str(exc)
-            )
+            receipt = DeliveryReceipt(intent=intent, status=DeliveryStatus.failed, error=str(exc))
             # Not stored as delivered, so a later retry re-attempts (§15.5).
             return receipt
         receipt = DeliveryReceipt(
@@ -171,8 +167,6 @@ class FakeIdentityResolver:
     def __init__(self, mappings: dict[tuple[str, str], MappedIdentity]) -> None:
         self._mappings = mappings
 
-    async def resolve(
-        self, channel: str, external_user_id: str
-    ) -> MappedIdentity | None:
+    async def resolve(self, channel: str, external_user_id: str) -> MappedIdentity | None:
         # Unmapped → None: no privileged identity by inference (I-09).
         return self._mappings.get((channel, external_user_id))

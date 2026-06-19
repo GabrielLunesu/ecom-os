@@ -33,8 +33,9 @@ class _RecordingRPC:
 
     async def history(self, key, config, limit=None):  # type: ignore[no-untyped-def]
         self.calls.append(("history", {"key": key}))
-        return {"messages": [{"role": "user", "text": "hi"},
-                             {"role": "assistant", "text": "hello"}]}
+        return {
+            "messages": [{"role": "user", "text": "hi"}, {"role": "assistant", "text": "hello"}]
+        }
 
     async def send(self, message, *, session_key, config, deliver=False):  # type: ignore[no-untyped-def]
         self.calls.append(("send", {"session_key": session_key, "message": message}))
@@ -92,9 +93,7 @@ async def test_resume_uses_existing_session_key() -> None:
 @pytest.mark.asyncio
 async def test_get_history_parses_messages() -> None:
     transport, _ = _transport()
-    history = await transport.get_history(
-        HermesSessionRef(profile_id="x", session_id="s1")
-    )
+    history = await transport.get_history(HermesSessionRef(profile_id="x", session_id="s1"))
     assert [m.role for m in history.messages] == ["user", "assistant"]
     assert history.source == "openclaw"
 
@@ -131,13 +130,14 @@ async def test_list_sessions_maps_sessions_list() -> None:
 async def test_background_and_branch_unsupported() -> None:
     transport, _ = _transport()
     with pytest.raises(CompatUnsupported):
-        await transport.branch(
-            BranchRequest(ref=HermesSessionRef(profile_id="x", session_id="s1"))
-        )
+        await transport.branch(BranchRequest(ref=HermesSessionRef(profile_id="x", session_id="s1")))
     with pytest.raises(CompatUnsupported):
         await transport.start_run(
             BackgroundRunRequest(
-                ecom_trace_id="t", ecom_job_id="j", workflow="w",
-                hermes_profile_id="x", prompt="p",
+                ecom_trace_id="t",
+                ecom_job_id="j",
+                workflow="w",
+                hermes_profile_id="x",
+                prompt="p",
             )
         )

@@ -37,18 +37,25 @@ interface is `live` yet — gated on a pinned Hermes (I-19).
 | UI primitives / shell / command palette | A06 | needed for `/chat`, `/agents` | chat + agents pages | Build behind A06 tokens; do not fork design system |
 | Metric snapshot contract | A08 | needed for brief narration | narration request | Deterministic snapshot is source; narration optional |
 
-## Open requests
+## Open cross-domain requests (A03-owned record)
 
-To be filed in `../../00-program/INTERFACE-REQUESTS.md` (none filed yet this turn):
+Per integration protocol, A03 records its cross-domain needs here; `00-program/**` is
+A00-owned and is not edited by builders. Owners/A00 transcribe accepted entries into the
+registry.
 
-1. **A02 trace/run/tool-invocation envelope + ingest** — schema for `trace_id`, `run_id`,
-   span/tool-invocation records, and the idempotent ingest endpoint, with coverage labels
-   (`verified|observed|imported|unknown`). Caller A03; owner A02.
-2. **A01 service identity + WS request context** — how the chat WebSocket authenticates the
-   human and resolves the allowed Hermes profile; service credential scoping. Caller A03;
-   owner A01.
-3. **A08 metric snapshot contract** — already `proposed` in registry as A08→A03; confirm
-   shape for narration request input. Caller A03; owner A08.
+| ID | Owner | Need | Proposed shape / link | Blocking |
+|---|---|---|---|---|
+| IR-A03-01 | A02 | Trace/run/tool-invocation envelope + idempotent ingest with coverage labels (`verified`/`observed`/`imported`/`unknown`) | Runtime §6.2/§7; replaces local `tools/trace_port.py` | verified trace links for read tools/runs |
+| IR-A03-02 | A01 | Service/channel identity + WS request context; identity→Hermes-profile mapping; service-credential scoping | Runtime §4.1/§14; replaces `hermes_chat.get_chat_identity` placeholder | authenticated `/chat`, exact tool identity |
+| IR-A03-03 | A08 | Confirm metric snapshot contract shape consumed by brief narration | Registry "Metric snapshot contract" (A08→A03); Runtime §12.2 | brief narration (non-blocking now) |
+| IR-A03-04 | A09/A01 | Register `app/api/hermes_chat.py` `router` (`/hermes`) in `app/main.py` | this `INTERFACES.md`; Build Spec Slice 3 | `/hermes/*` reachable |
+| IR-A03-05 | infra/human | Provide a pinned **real Hermes v0.16.0** endpoint + credentials/install target | DR-A03-01; `HermesNativeTransport`; A03-R02 | real conformance + all 7 acceptance scenarios |
 
-Cross-domain requests also appear in `../../00-program/INTERFACE-REQUESTS.md`. Do not create
-a private competing contract here.
+## Decision record (A03-owned)
+
+- **DR-A03-01 — OpenClaw is NOT Hermes (owner-decided).** The in-repo OpenClaw gateway is a
+  legacy/compat transport only (`hermes/openclaw_compat.py`); the real-Hermes seam is
+  `HermesNativeTransport`. Real-Hermes conformance stays BLOCKED, not faked, until IR-A03-05.
+
+A03 does not edit `00-program/**`; these are surfaced for A00/owners to transcribe into the
+registry. A03 does not create a competing private contract.

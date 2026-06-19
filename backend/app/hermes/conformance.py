@@ -68,9 +68,7 @@ class ConformanceReport:
         return self.protocol_passed and self.channels_passed and self.tools_passed
 
     def failures(self) -> list[CheckResult]:
-        return [
-            c for c in (*self.protocol, *self.channels, *self.tools) if not c.passed
-        ]
+        return [c for c in (*self.protocol, *self.channels, *self.tools) if not c.passed]
 
 
 def _check(name: str, fn: Callable[[], bool]) -> CheckResult:
@@ -95,9 +93,7 @@ def run_tool_conformance(catalog: ToolCatalog = CATALOG) -> tuple[CheckResult, .
     def _adapter_mcp_parity() -> bool:
         mcp_names = {t.name for t in to_mcp_tools(catalog)}
         adapter = {r["name"]: r["schema_hash"] for r in to_adapter_registration(catalog)}
-        mcp_hashes = {
-            t.name: (t.meta or {}).get("ecom_schema_hash") for t in to_mcp_tools(catalog)
-        }
+        mcp_hashes = {t.name: (t.meta or {}).get("ecom_schema_hash") for t in to_mcp_tools(catalog)}
         return mcp_names == set(adapter) == set(catalog.names) and adapter == mcp_hashes
 
     def _good_invocation_validates() -> bool:
@@ -156,8 +152,7 @@ def _invocation(
         invocation_id="conf_inv",
         tool_name=tool_name or (definition.name if definition else "ecom.order.get"),
         tool_version=tool_version or (definition.version if definition else "1.0.0"),
-        schema_hash=schema_hash
-        or (definition.schema_hash if definition else "sha256:x"),
+        schema_hash=schema_hash or (definition.schema_hash if definition else "sha256:x"),
         arguments={"store_id": "st_1", "order_id": "ord_1"},
         context=InvocationContext(),
     )
@@ -183,9 +178,7 @@ async def run_conformance_suite(
         second = await channel_service.deliver(channel_intent)
         channel_checks = (
             CheckResult("channel_delivers", first.status is DeliveryStatus.delivered),
-            CheckResult(
-                "channel_idempotent", second.status is DeliveryStatus.duplicate
-            ),
+            CheckResult("channel_idempotent", second.status is DeliveryStatus.duplicate),
         )
 
     # Tool-catalog conformance (§15.2) is real Ecom-OS evidence, independent of Hermes.

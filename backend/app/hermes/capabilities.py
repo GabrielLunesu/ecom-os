@@ -64,9 +64,7 @@ FEATURE_REQUIREMENTS: dict[str, FeatureRequirement] = {
     ),
     "background_runs": FeatureRequirement(
         feature="background_runs",
-        mandatory=frozenset(
-            {"background.runs", "background.events", "background.stop"}
-        ),
+        mandatory=frozenset({"background.runs", "background.events", "background.stop"}),
         optional=frozenset({"background.approval_response"}),
     ),
     "external_tools": FeatureRequirement(
@@ -98,19 +96,13 @@ class FeatureEvaluation:
     missing_optional: tuple[str, ...]
 
 
-def evaluate_feature(
-    capabilities: HermesCapabilities, feature: str
-) -> FeatureEvaluation:
+def evaluate_feature(capabilities: HermesCapabilities, feature: str) -> FeatureEvaluation:
     """Resolve a feature's readiness against probed capabilities (Runtime §3.2)."""
     requirement = FEATURE_REQUIREMENTS.get(feature)
     if requirement is None:
         raise KeyError(f"unknown feature: {feature!r}")
-    missing_mandatory = tuple(
-        sorted(f for f in requirement.mandatory if not capabilities.has(f))
-    )
-    missing_optional = tuple(
-        sorted(f for f in requirement.optional if not capabilities.has(f))
-    )
+    missing_mandatory = tuple(sorted(f for f in requirement.mandatory if not capabilities.has(f)))
+    missing_optional = tuple(sorted(f for f in requirement.optional if not capabilities.has(f)))
     if missing_mandatory:
         readiness = FeatureReadiness.not_ready
     elif missing_optional:
@@ -154,9 +146,7 @@ class CompatibilityRecord:
     features: dict[str, FeatureEvaluation] = field(default_factory=dict)
 
     def feature_readiness(self, feature: str) -> FeatureReadiness:
-        evaluation = self.features.get(feature) or evaluate_feature(
-            self.capabilities, feature
-        )
+        evaluation = self.features.get(feature) or evaluate_feature(self.capabilities, feature)
         if not self.is_real:
             # A fixture probe never proves the production contract.
             return FeatureReadiness.not_ready

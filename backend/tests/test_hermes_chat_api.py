@@ -50,9 +50,7 @@ def test_create_list_history_roundtrip(client: TestClient) -> None:
     assert sid in {s["session_id"] for s in listed["sessions"]}
 
     # drive a turn via SSE, then history reflects it
-    with client.stream(
-        "POST", f"/hermes/sessions/{sid}/messages", json={"text": "hi"}
-    ) as stream:
+    with client.stream("POST", f"/hermes/sessions/{sid}/messages", json={"text": "hi"}) as stream:
         frames = [line for line in stream.iter_lines() if line]
     assert any("data:" in f for f in frames)
 
@@ -70,13 +68,11 @@ def test_status_and_interrupt(client: TestClient) -> None:
 
 def test_stream_frames_are_safe_events(client: TestClient) -> None:
     sid = client.post("/hermes/sessions", json={}).json()["session_id"]
-    with client.stream(
-        "POST", f"/hermes/sessions/{sid}/messages", json={"text": "q"}
-    ) as stream:
+    with client.stream("POST", f"/hermes/sessions/{sid}/messages", json={"text": "q"}) as stream:
         payloads = []
         for line in stream.iter_lines():
             if line and line.startswith("data:"):
-                payloads.append(json.loads(line[len("data:"):].strip()))
+                payloads.append(json.loads(line[len("data:") :].strip()))
     assert payloads, "expected at least one SSE data frame"
     # every frame is the safe projection; no credential keys
     for frame in payloads:

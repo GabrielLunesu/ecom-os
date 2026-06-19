@@ -121,9 +121,7 @@ class ChatSessionGateway:
             SessionQuery(profile_id=self._identity.allowed_profile_id)
         )
         return {
-            "sessions": [
-                {"session_id": s.ref.session_id, "title": s.title} for s in page.items
-            ]
+            "sessions": [{"session_id": s.ref.session_id, "title": s.title} for s in page.items]
         }
 
     async def get_history(self, *, session_id: str) -> dict[str, Any]:
@@ -139,13 +137,9 @@ class ChatSessionGateway:
         status = await self._bridge.get_status(self._ref(session_id))
         return {"session_id": session_id, "state": status.state.value}
 
-    async def submit_prompt(
-        self, *, session_id: str, text: str
-    ) -> AsyncIterator[dict[str, Any]]:
+    async def submit_prompt(self, *, session_id: str, text: str) -> AsyncIterator[dict[str, Any]]:
         self._check("submit_prompt")
-        stream = self._bridge.submit_prompt(
-            InteractivePrompt(ref=self._ref(session_id), text=text)
-        )
+        stream = self._bridge.submit_prompt(InteractivePrompt(ref=self._ref(session_id), text=text))
         async for event in stream:
             yield safe_event(event)
 
@@ -168,6 +162,4 @@ class ChatSessionGateway:
     def _ref(self, session_id: str) -> HermesSessionRef:
         # The browser identifies a session by its Ecom-OS-safe id; the profile is bound to
         # the authenticated identity, so a client cannot address another profile's session.
-        return HermesSessionRef(
-            profile_id=self._identity.allowed_profile_id, session_id=session_id
-        )
+        return HermesSessionRef(profile_id=self._identity.allowed_profile_id, session_id=session_id)

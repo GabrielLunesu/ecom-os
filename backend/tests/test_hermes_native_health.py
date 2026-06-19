@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 
 from app.hermes.bridge import HermesBridge
+from app.hermes.fake import FakeHermesTransport
 from app.hermes.health import hermes_health_snapshot
 from app.hermes.native import (
     HermesNativeConfig,
@@ -16,7 +17,6 @@ from app.hermes.native import (
     HermesNativeNotImplemented,
     HermesNativeTransport,
 )
-from app.hermes.fake import FakeHermesTransport
 from app.hermes.types import CreateSession
 
 

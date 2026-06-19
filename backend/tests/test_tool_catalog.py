@@ -13,7 +13,6 @@ import pytest
 
 from app.tools.catalog import (
     CATALOG,
-    Coverage,
     ReadOrWrite,
     ReconciliationStrategy,
     RiskClass,
@@ -213,9 +212,7 @@ def test_unknown_argument_rejected() -> None:
     with pytest.raises(SchemaMismatchError, match="unknown arguments"):
         validate_invocation(
             CATALOG,
-            _invocation(
-                arguments={"store_id": "st_1", "order_id": "o", "evil": "x"}
-            ),
+            _invocation(arguments={"store_id": "st_1", "order_id": "o", "evil": "x"}),
         )
 
 

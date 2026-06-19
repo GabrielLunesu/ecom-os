@@ -68,9 +68,7 @@ class ToolInvoker:
                 run_id=ctx.run_id,
                 hermes_session_id=ctx.hermes_session_id,
                 hermes_tool_call_id=ctx.hermes_tool_call_id,
-                arguments_redacted=(
-                    redact(definition, invocation.arguments) if definition else {}
-                ),
+                arguments_redacted=(redact(definition, invocation.arguments) if definition else {}),
                 error_code=error_code,
             )
         )
@@ -82,19 +80,23 @@ class ToolInvoker:
         try:
             definition = validate_invocation(self._catalog, invocation)
         except UnknownToolError:
-            await self._record(invocation, None, status=ToolStatus.failed,
-                               error_code="unknown_tool")
+            await self._record(
+                invocation, None, status=ToolStatus.failed, error_code="unknown_tool"
+            )
             return ToolResult(
-                ok=False, status=ToolStatus.failed,
+                ok=False,
+                status=ToolStatus.failed,
                 invocation_id=invocation.invocation_id,
                 trace_id=invocation.context.trace_id,
                 error={"code": "unknown_tool", "message": "tool not in catalog"},
             )
         except SchemaMismatchError as exc:
-            await self._record(invocation, None, status=ToolStatus.failed,
-                               error_code="schema_mismatch")
+            await self._record(
+                invocation, None, status=ToolStatus.failed, error_code="schema_mismatch"
+            )
             return ToolResult(
-                ok=False, status=ToolStatus.failed,
+                ok=False,
+                status=ToolStatus.failed,
                 invocation_id=invocation.invocation_id,
                 trace_id=invocation.context.trace_id,
                 error={"code": "schema_mismatch", "message": str(exc)},
@@ -102,10 +104,12 @@ class ToolInvoker:
 
         # v1 invoker handles read tools; writes go through the action contract later.
         if definition.read_or_write is not ReadOrWrite.read:
-            await self._record(invocation, definition, status=ToolStatus.failed,
-                               error_code="write_not_supported")
+            await self._record(
+                invocation, definition, status=ToolStatus.failed, error_code="write_not_supported"
+            )
             return ToolResult(
-                ok=False, status=ToolStatus.failed,
+                ok=False,
+                status=ToolStatus.failed,
                 invocation_id=invocation.invocation_id,
                 trace_id=invocation.context.trace_id,
                 error={
@@ -116,10 +120,12 @@ class ToolInvoker:
 
         handler = self._handlers.get(definition.name)
         if handler is None:
-            await self._record(invocation, definition, status=ToolStatus.failed,
-                               error_code="no_handler")
+            await self._record(
+                invocation, definition, status=ToolStatus.failed, error_code="no_handler"
+            )
             return ToolResult(
-                ok=False, status=ToolStatus.failed,
+                ok=False,
+                status=ToolStatus.failed,
                 invocation_id=invocation.invocation_id,
                 trace_id=invocation.context.trace_id,
                 error={"code": "no_handler", "message": "no handler registered"},

@@ -40,8 +40,15 @@ async def test_create_and_submit_streams_safe_events() -> None:
 @pytest.mark.asyncio
 async def test_arbitrary_protocol_method_is_denied() -> None:
     gw, _ = _gateway()
-    for forbidden in ["cli.exec", "config.set", "reload.env", "process.stop",
-                      "secret.respond", "sudo", "sessions.delete"]:
+    for forbidden in [
+        "cli.exec",
+        "config.set",
+        "reload.env",
+        "process.stop",
+        "secret.respond",
+        "sudo",
+        "sessions.delete",
+    ]:
         with pytest.raises(BrowserCommandDenied):
             await gw.dispatch(forbidden, {})
 
@@ -62,9 +69,7 @@ async def test_browser_cannot_choose_profile_uses_identity() -> None:
     created = await gw.create_session()
     sid = created["session_id"]
     # The session was created under the identity's profile, regardless of any client wish.
-    status = await bridge.get_status(
-        HermesSessionRef(profile_id="hp_owner", session_id=sid)
-    )
+    status = await bridge.get_status(HermesSessionRef(profile_id="hp_owner", session_id=sid))
     assert status.ref.profile_id == "hp_owner"
 
 

@@ -45,10 +45,6 @@ def get_chat_bridge() -> HermesBridge:
     return select_transport(os.environ).bridge
 
 
-def _is_real_transport() -> bool:
-    return select_transport(os.environ).is_real
-
-
 def get_chat_identity(auth: AuthContext = Depends(require_user_auth)) -> ChatIdentity:
     """Bind the authenticated user to its allowed Hermes profile (browser cannot choose)."""
     user = auth.user
@@ -107,23 +103,17 @@ async def resume_session(
 
 
 @router.get("/sessions/{session_id}/history")
-async def get_history(
-    session_id: str, gw: ChatSessionGateway = GATEWAY_DEP
-) -> dict[str, object]:
+async def get_history(session_id: str, gw: ChatSessionGateway = GATEWAY_DEP) -> dict[str, object]:
     return await gw.get_history(session_id=session_id)
 
 
 @router.get("/sessions/{session_id}/status")
-async def get_status(
-    session_id: str, gw: ChatSessionGateway = GATEWAY_DEP
-) -> dict[str, object]:
+async def get_status(session_id: str, gw: ChatSessionGateway = GATEWAY_DEP) -> dict[str, object]:
     return await gw.get_status(session_id=session_id)
 
 
 @router.post("/sessions/{session_id}/interrupt")
-async def interrupt(
-    session_id: str, gw: ChatSessionGateway = GATEWAY_DEP
-) -> dict[str, object]:
+async def interrupt(session_id: str, gw: ChatSessionGateway = GATEWAY_DEP) -> dict[str, object]:
     return await gw.interrupt(session_id=session_id)
 
 

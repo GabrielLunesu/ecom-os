@@ -44,8 +44,8 @@ from .types import (
     InteractivePrompt,
     InterruptRequest,
     Page,
-    SessionState,
     SessionQuery,
+    SessionState,
 )
 
 # Capability flags the compat transport can honestly claim (interactive, non-streaming).
@@ -138,8 +138,7 @@ class OpenClawCompatTransport:
 
         return Page(
             items=tuple(
-                HermesSessionSummary(ref=ref, title=None, last_seen=None)
-                for ref in summaries
+                HermesSessionSummary(ref=ref, title=None, last_seen=None) for ref in summaries
             )
         )
 
@@ -152,9 +151,7 @@ class OpenClawCompatTransport:
         # rather than inventing one.
         return HermesSessionStatus(ref=ref, state=SessionState.unknown)
 
-    async def submit_prompt(
-        self, request: InteractivePrompt
-    ) -> AsyncIterator[HermesEvent]:
+    async def submit_prompt(self, request: InteractivePrompt) -> AsyncIterator[HermesEvent]:
         result = await self._send(
             request.text, session_key=request.ref.session_id, config=self._config
         )
@@ -167,9 +164,7 @@ class OpenClawCompatTransport:
         yield HermesEvent(type=HermesEventType.final, seq=1, payload={})
 
     async def interrupt(self, request: InterruptRequest) -> None:
-        await self._call(
-            "chat.abort", {"sessionKey": request.ref.session_id}, config=self._config
-        )
+        await self._call("chat.abort", {"sessionKey": request.ref.session_id}, config=self._config)
 
     async def branch(self, request: BranchRequest) -> HermesSessionRef:
         raise CompatUnsupported("branch is not supported by the OpenClaw compat transport")

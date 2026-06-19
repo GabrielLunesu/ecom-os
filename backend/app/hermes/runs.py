@@ -79,9 +79,7 @@ _TERMINAL_ABSENT = frozenset({RunState.unknown, RunState.stopped, RunState.faile
 
 
 class BackgroundRunPort:
-    def __init__(
-        self, bridge: HermesBridge, store: RunStore, leases: LeasePort
-    ) -> None:
+    def __init__(self, bridge: HermesBridge, store: RunStore, leases: LeasePort) -> None:
         self._bridge = bridge
         self._store = store
         self._leases = leases

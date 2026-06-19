@@ -14,9 +14,7 @@ from app.hermes.capabilities import FEATURE_REQUIREMENTS, REQUIRED_FLAGS
 from app.tools.generators import catalog_manifest
 
 # backend/tests/ -> repo root -> hermes-integration/conformance
-_FIXTURES = (
-    Path(__file__).resolve().parents[2] / "hermes-integration" / "conformance"
-)
+_FIXTURES = Path(__file__).resolve().parents[2] / "hermes-integration" / "conformance"
 
 
 def _load(name: str) -> dict:

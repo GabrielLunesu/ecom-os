@@ -98,9 +98,7 @@ async def capability_probe(
     capabilities: HermesCapabilities = await bridge.probe()
     conformance = await run_conformance(bridge)
 
-    features = {
-        name: evaluate_feature(capabilities, name) for name in FEATURE_REQUIREMENTS
-    }
+    features = {name: evaluate_feature(capabilities, name) for name in FEATURE_REQUIREMENTS}
 
     return CompatibilityRecord(
         hermes_version=health.version,
