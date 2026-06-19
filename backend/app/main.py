@@ -5,10 +5,11 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter, FastAPI, status
+from fastapi import APIRouter, Depends, FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi_pagination import add_pagination
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.activity import router as activity_router
 from app.api.agent import router as agent_router
@@ -36,12 +37,17 @@ from app.api.tasks import router as tasks_router
 from app.api.users import router as users_router
 from app.core.config import settings
 from app.core.error_handling import install_error_handling
+from app.core.health import HealthState, build_readiness_report
 from app.core.logging import configure_logging, get_logger
 from app.core.rate_limit import validate_rate_limit_redis
 from app.core.rate_limit_backend import RateLimitBackend
 from app.core.security_headers import SecurityHeadersMiddleware
-from app.db.session import init_db
-from app.schemas.health import HealthStatusResponse
+from app.db.session import get_session, init_db
+from app.schemas.health import (
+    ComponentHealthModel,
+    HealthReportResponse,
+    HealthStatusResponse,
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -543,17 +549,44 @@ def healthz() -> HealthStatusResponse:
     tags=["health"],
     response_model=HealthStatusResponse,
     summary="Readiness Check",
-    description="Readiness probe endpoint for service orchestration checks.",
-    responses={
-        status.HTTP_200_OK: {
-            "description": "Service is ready.",
-            "content": {"application/json": {"example": {"ok": True}}},
-        }
-    },
+    description="Readiness probe: verifies the database answers before reporting ready.",
 )
-def readyz() -> HealthStatusResponse:
-    """Readiness probe endpoint for service orchestration checks."""
-    return HealthStatusResponse(ok=True)
+async def readyz(
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> HealthStatusResponse:
+    """Readiness probe; returns 503 when a readiness-critical dimension is down."""
+    overall, _components = await build_readiness_report(session)
+    ready = overall is not HealthState.DOWN
+    if not ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return HealthStatusResponse(ok=ready)
+
+
+@app.get(
+    "/readyz/details",
+    tags=["health"],
+    response_model=HealthReportResponse,
+    summary="Readiness Detail Report",
+    description=(
+        "Multi-dimension readiness report (liveness, database, migrations, and "
+        "placeholders for connector/queue/trace/backup/Hermes dimensions)."
+    ),
+)
+async def readyz_details(
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+) -> HealthReportResponse:
+    """Return the full readiness report across all health dimensions."""
+    overall, components = await build_readiness_report(session)
+    ready = overall is not HealthState.DOWN
+    if not ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return HealthReportResponse(
+        state=overall.value,
+        ready=ready,
+        components=[ComponentHealthModel(**c.as_dict()) for c in components],
+    )
 
 
 api_v1 = APIRouter(prefix="/api/v1")

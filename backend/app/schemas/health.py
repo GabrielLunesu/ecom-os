@@ -8,6 +8,22 @@ from pydantic import Field
 from sqlmodel import SQLModel
 
 
+class ComponentHealthModel(SQLModel):
+    """One health dimension's state and detail."""
+
+    name: str = Field(description="Dimension name, e.g. 'database'.")
+    state: str = Field(description="One of: ok, degraded, down, unknown.")
+    detail: str | None = Field(default=None, description="Human-readable context.")
+
+
+class HealthReportResponse(SQLModel):
+    """Multi-dimension readiness report (a single green/red light is insufficient)."""
+
+    state: str = Field(description="Overall state derived from owned dimensions.")
+    ready: bool = Field(description="Whether the service is ready to serve reads.")
+    components: list[ComponentHealthModel] = Field(default_factory=list)
+
+
 class HealthStatusResponse(SQLModel):
     """Standard payload for service liveness/readiness checks."""
 
