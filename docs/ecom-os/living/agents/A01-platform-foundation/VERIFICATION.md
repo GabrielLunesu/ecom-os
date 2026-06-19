@@ -2,7 +2,36 @@
 
 ## Latest verified commit
 
-`f92adbb` (branch `agent/a01-foundation`)
+`64ca874` (branch `agent/a01-foundation`)
+
+## Integration gates (A01-owned files)
+
+| Gate | Command | Result |
+|---|---|---|
+| isort | `uv run isort --check-only <A01 files>` | pass |
+| black | `uv run black --check <A01 files>` | pass (line-length 100) |
+| flake8 | `uv run flake8 --config .flake8 <A01 files>` | pass (no findings) |
+| mypy --strict | `uv run mypy` | pass — "no issues found in 216 source files" |
+| migration graph | `uv run python scripts/check_migration_graph.py` | pass — single head `a01_0001_identity`, 35 revisions |
+| migration N-1 (hermetic) | `pytest tests/test_identity_migration.py` | pass — upgrade/restart/downgrade from `a0b1c2d3e4f5` on seeded data |
+| frontend prettier | `npx prettier --check src/api/generated/**` | pass |
+| frontend eslint | `npx eslint src/api/generated` | pass |
+| frontend tsc | `npx tsc --noEmit` | pass (exit 0) with regenerated client |
+
+Notes / environment limits:
+- `make backend-migration-check` runs upgrade→downgrade base→upgrade on a **Dockerized
+  Postgres 16**; Docker is unavailable in this dev environment, so the Postgres run is
+  deferred to CI/A09. The graph check + hermetic sqlite N-1 test cover the A01 migration.
+- The repo baseline is **not** isort/black-clean: ~20 foreign-owned files
+  (`app/services/*`, some prototype tests) fail `black --check`/`isort --check` at HEAD;
+  A01 did not touch or reformat them (ownership). The whole-repo `make backend-format-check`
+  is therefore red on pre-existing foreign violations, independent of A01.
+- `scripts/ci/branch_readiness.py` is not present in this branch (A00/A09 tooling not yet
+  merged); its constituent gates above are run directly.
+
+## Original commit reference
+
+`f92adbb` was the feature-complete commit; `64ca874` adds isort/black normalization.
 
 ## Environment
 
