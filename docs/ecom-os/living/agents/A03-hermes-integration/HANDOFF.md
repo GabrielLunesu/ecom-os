@@ -2,11 +2,12 @@
 
 ## Safe continuation point
 
-Branch `agent/a03-hermes-runtime` (NOT `agent/A03-hermes-integration` — do not switch).
-Audit + first two v2 foundation modules landed: `backend/app/tools/` (catalog) and
-`backend/app/hermes/` (bridge/capabilities/fake/probe), both fixture-driven, ruff+mypy clean,
-33 new tests (109 with A03 baseline). Decision/interface requests filed (DR-A03-01,
-IR-A03-01..03). Resume at WORKBOARD "Next" items 4–6.
+Branch `agent/a03-hermes-runtime` (NOT `agent/A03-hermes-integration` — do not switch),
+pushed to `origin`, status `ready_for_integration` at `077109b`. Full A03 v2 foundation
+landed (`app/tools/`, `app/hermes/`, `app/api/hermes_chat.py`, `app/mcp_server/catalog_server.py`,
+`hermes-integration/`); isort/black/flake8/mypy --strict clean; 121 tests pass; no migrations.
+The only blocker to runtime acceptance is a real Hermes endpoint (IR-A03-05). Resume by wiring
+`HermesNativeTransport` against that endpoint, then registering the chat router (IR-A03-04).
 
 ## What is working
 

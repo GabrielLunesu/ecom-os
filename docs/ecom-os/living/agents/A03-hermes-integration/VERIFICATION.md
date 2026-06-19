@@ -2,8 +2,25 @@
 
 ## Latest verified commit
 
-`5f971a7` — tool catalog + HermesBridge foundation (fixture-driven). Pre-v2 baseline was
-`3909904`.
+`077109b` — full A03 v2 foundation, gate-clean and pushed to
+`origin/agent/a03-hermes-runtime`. Pre-v2 baseline was `3909904`.
+
+## Integration gates (run from `backend/`)
+
+| Gate | Command | Result |
+|---|---|---|
+| isort (A03 files) | `uv run isort <A03 paths> --check-only` | **clean** |
+| black (A03 files) | `uv run black <A03 paths> --check` | **clean** (35 files) |
+| flake8 (A03 files) | `uv run flake8 --config .flake8 <A03 paths>` | **clean** |
+| mypy --strict (full repo) | `uv run mypy` | **Success: no issues in 218 source files** |
+| tests (A03 v2 + regression) | `uv run python -m pytest <A03 tests> tests/test_mcp_server.py tests/test_gateway_rpc_connect_scopes.py -q` | **121 passed** (105s) |
+| migration graph | `uv run python scripts/check_migration_graph.py` | **OK** — single head `a0b1c2d3e4f5`, no A03 migrations |
+| conformance gate | `uv run python -m app.hermes.conformance_cli` | **exit 2 BLOCKED** (honest; tool-catalog checks pass) |
+
+Known baseline conditions (not A03): repo-wide `black --check` flags pre-existing non-A03
+files (untouched, ownership); `scripts/ci/branch_readiness.py` is absent (A09-owned CI) so
+gates were run directly; `make backend-migration-check` Docker/Postgres path not run locally
+(no A03 migrations to validate).
 
 ## Required checks
 

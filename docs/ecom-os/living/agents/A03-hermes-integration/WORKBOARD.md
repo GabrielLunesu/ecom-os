@@ -37,7 +37,10 @@ Each item is independently verifiable.
 - [x] Read full normative set + all agents' `CURRENT.md`/`INTERFACES.md` + programme state.
 - [x] Audit OpenClaw gateway, `/delegate` spike, MCP server, CS runtime, frontend.
 - [x] Publish living architecture, capability matrix (interfaces), risks, diagrams, baseline.
-- [x] Filed decision request **DR-A03-01** + interface requests **IR-A03-01/02/03**.
+- [x] Recorded **DR-A03-01** + interface requests **IR-A03-01..05** in `INTERFACES.md`
+      (A00-owned `00-program/**` left at baseline — RF-008).
+- [x] Pushed branch to `origin`; isort/black/flake8/mypy --strict clean on A03 code; status
+      set `ready_for_integration` (RF-007/RF-011). See `CURRENT.md` readiness scope.
 
 ## Next — Slice 0 (Contract and risk spikes) — gate before any CS automation
 

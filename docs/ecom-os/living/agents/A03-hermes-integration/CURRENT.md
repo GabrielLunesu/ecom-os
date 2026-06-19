@@ -1,9 +1,31 @@
 ---
 owner: A03
 branch: agent/a03-hermes-runtime
-status: building
-last_verified_commit: 5f971a7
+status: ready_for_integration
+last_verified_commit: 077109b
 ---
+
+## Integration readiness (scope)
+
+The A03 backend foundation is ready to merge: additive only (new `app/tools/`, `app/hermes/`,
+`app/api/hermes_chat.py`, `app/mcp_server/catalog_server.py`, `hermes-integration/`), no
+migrations, no edits to other agents' or A00-owned files. Gates on A03 code: **isort + black +
+flake8 clean; mypy --strict clean (full repo, 218 files); 121 tests pass** (`VERIFICATION.md`).
+Branch pushed to `origin/agent/a03-hermes-runtime`.
+
+Honestly scoped, not hidden:
+
+- The seven runtime acceptance scenarios (real resumed session, traced read tool, background
+  run, native channel delivery, conformance evidence, etc.) are **BLOCKED on a real pinned
+  Hermes v0.16.0 endpoint** (IR-A03-05 / A03-R02), per the owner decision on DR-A03-01. Every
+  layer is built behind the bridge interface and flips to production-real with no new code once
+  the endpoint + A01 identity (IR-A03-02) + A02 ingest (IR-A03-01) land.
+- Repo-wide `black --check` flags several **pre-existing non-A03 files** (e.g.
+  `app/services/agent_runtime/{wismo,flow,in_app}.py`, `app/models/insight.py`); these are
+  outside A03 ownership and untouched (baseline condition for A09).
+- `app/api/hermes_chat.py` `router` awaits central registration in `main.py` (IR-A03-04).
+- The self-check `scripts/ci/branch_readiness.py` named by integration is **not present** in the
+  repo (CI is A09-owned); the underlying gates were run directly — see `VERIFICATION.md`.
 
 # A03 — Hermes Native Integration and Main Chat — Current State
 
