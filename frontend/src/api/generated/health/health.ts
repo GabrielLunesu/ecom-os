@@ -17,7 +17,7 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatusResponse } from ".././model";
+import type { HealthReportResponse, HealthStatusResponse } from ".././model";
 
 import { customFetch } from "../../mutator";
 
@@ -352,7 +352,7 @@ export function useHealthzHealthzGet<
 }
 
 /**
- * Readiness probe endpoint for service orchestration checks.
+ * Readiness probe: verifies the database answers before reporting ready.
  * @summary Readiness Check
  */
 export type readyzReadyzGetResponse200 = {
@@ -504,6 +504,179 @@ export function useReadyzReadyzGet<
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
   const queryOptions = getReadyzReadyzGetQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Multi-dimension readiness report (liveness, database, migrations, and placeholders for connector/queue/trace/backup/Hermes dimensions).
+ * @summary Readiness Detail Report
+ */
+export type readyzDetailsReadyzDetailsGetResponse200 = {
+  data: HealthReportResponse;
+  status: 200;
+};
+
+export type readyzDetailsReadyzDetailsGetResponseSuccess =
+  readyzDetailsReadyzDetailsGetResponse200 & {
+    headers: Headers;
+  };
+export type readyzDetailsReadyzDetailsGetResponse =
+  readyzDetailsReadyzDetailsGetResponseSuccess;
+
+export const getReadyzDetailsReadyzDetailsGetUrl = () => {
+  return `/readyz/details`;
+};
+
+export const readyzDetailsReadyzDetailsGet = async (
+  options?: RequestInit,
+): Promise<readyzDetailsReadyzDetailsGetResponse> => {
+  return customFetch<readyzDetailsReadyzDetailsGetResponse>(
+    getReadyzDetailsReadyzDetailsGetUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getReadyzDetailsReadyzDetailsGetQueryKey = () => {
+  return [`/readyz/details`] as const;
+};
+
+export const getReadyzDetailsReadyzDetailsGetQueryOptions = <
+  TData = Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+      TError,
+      TData
+    >
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getReadyzDetailsReadyzDetailsGetQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>
+  > = ({ signal }) =>
+    readyzDetailsReadyzDetailsGet({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ReadyzDetailsReadyzDetailsGetQueryResult = NonNullable<
+  Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>
+>;
+export type ReadyzDetailsReadyzDetailsGetQueryError = unknown;
+
+export function useReadyzDetailsReadyzDetailsGet<
+  TData = Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+          TError,
+          Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useReadyzDetailsReadyzDetailsGet<
+  TData = Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+          TError,
+          Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useReadyzDetailsReadyzDetailsGet<
+  TData = Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Readiness Detail Report
+ */
+
+export function useReadyzDetailsReadyzDetailsGet<
+  TData = Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof readyzDetailsReadyzDetailsGet>>,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getReadyzDetailsReadyzDetailsGetQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

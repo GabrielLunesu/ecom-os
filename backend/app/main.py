@@ -11,30 +11,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi_pagination import add_pagination
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.activity import router as activity_router
-from app.api.agent import router as agent_router
-from app.api.agents import router as agents_router
-from app.api.approvals import router as approvals_router
-from app.api.auth import router as auth_router
-from app.api.ecom import router as ecom_router
-from app.api.ecom_webhooks import router as ecom_webhooks_router
-from app.api.board_group_memory import router as board_group_memory_router
-from app.api.board_groups import router as board_groups_router
-from app.api.board_memory import router as board_memory_router
-from app.api.board_onboarding import router as board_onboarding_router
-from app.api.board_webhooks import router as board_webhooks_router
-from app.api.boards import router as boards_router
-from app.api.gateway import router as gateway_router
-from app.api.gateways import router as gateways_router
-from app.api.identity import router as identity_router
-from app.api.metrics import router as metrics_router
-from app.api.organizations import router as organizations_router
-from app.api.skills_marketplace import router as skills_marketplace_router
-from app.api.souls_directory import router as souls_directory_router
-from app.api.tags import router as tags_router
-from app.api.task_custom_fields import router as task_custom_fields_router
-from app.api.tasks import router as tasks_router
-from app.api.users import router as users_router
+from app.api.registry import register_domain_routers
 from app.core.config import settings
 from app.core.error_handling import install_error_handling
 from app.core.health import HealthState, build_readiness_report
@@ -590,30 +567,7 @@ async def readyz_details(
 
 
 api_v1 = APIRouter(prefix="/api/v1")
-api_v1.include_router(auth_router)
-api_v1.include_router(identity_router)
-api_v1.include_router(agent_router)
-api_v1.include_router(agents_router)
-api_v1.include_router(activity_router)
-api_v1.include_router(gateway_router)
-api_v1.include_router(gateways_router)
-api_v1.include_router(metrics_router)
-api_v1.include_router(organizations_router)
-api_v1.include_router(souls_directory_router)
-api_v1.include_router(skills_marketplace_router)
-api_v1.include_router(board_groups_router)
-api_v1.include_router(board_group_memory_router)
-api_v1.include_router(boards_router)
-api_v1.include_router(board_memory_router)
-api_v1.include_router(board_webhooks_router)
-api_v1.include_router(board_onboarding_router)
-api_v1.include_router(approvals_router)
-api_v1.include_router(tasks_router)
-api_v1.include_router(task_custom_fields_router)
-api_v1.include_router(tags_router)
-api_v1.include_router(users_router)
-api_v1.include_router(ecom_router)
-api_v1.include_router(ecom_webhooks_router)
+register_domain_routers(api_v1)
 app.include_router(api_v1)
 
 add_pagination(app)
