@@ -20,6 +20,9 @@ from app.core.redaction import (
     scan_for_secrets,
 )
 
+# Fake secrets are assembled from fragments so no contiguous token literal exists in
+# source (which would trip provider secret scanners); they reform at runtime to exercise
+# both key-based redaction and value-pattern detection.
 SHOPIFY_SECRET = "shpat_" + ("0123456789abcdef" * 2)
 ANTHROPIC_SECRET = "sk-ant-" + "api03-abcdef0123456789abcdef0123"
 BEARER = "Bearer " + "eyJhbGciOiJIUzI1Niastufffffffff"
