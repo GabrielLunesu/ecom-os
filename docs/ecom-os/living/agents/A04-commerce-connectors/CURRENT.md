@@ -2,7 +2,7 @@
 owner: A04
 branch: agent/a04-cs
 status: ready_for_integration
-last_verified_commit: SET_AFTER_FINAL_COMMIT
+last_verified_commit: 26481bfbceae85bedcae28fb3d4d62d05d5a2d59
 ---
 
 # A04 — Commerce Connectors and Read Models — Current State
@@ -49,37 +49,14 @@ Evidence: `VERIFICATION.md` (33 A04 tests + 578-test full suite green; migration
 - `api/ecom_webhooks.py` (shared-secret, no durable inbox) — superseded by `connectors/webhooks.py`; retire when the email ingress route is migrated.
 - Inbox first-ACTIVE discovery in `composio_inbox.discover_active_mail_account` — superseded by pinned `account_ref`; remove call sites during A05 integration.
 
-### Canonical / reusable (keep behind v2 contracts)
+### Not yet migrated onto v2 (greenfield items now superseded by the layer above)
 
-- `backend/app/services/connectors/base.py` — `ShopifyConnector` ABC (`get_shop/get_order/search_orders/get_fulfillments/list_orders/create_discount`) and `InboxConnector` ABC. **Capability-shaped, Shopify-specific** — not yet a provider-independent port with a durable command/action envelope.
-- `backend/app/services/connectors/secrets.py` — `Secret` (redacts in repr/str/format; `.reveal()` only) and `ConnectionRef` (frozen; `provider ∈ {composio,direct}`, rejects unknown). **Strong, keep.** `external_id` is overloaded (Composio account id vs. raw store domain) — insufficient for I-09 exact binding.
-- `backend/app/services/connectors/shopify_direct.py` — `DirectShopifyConnector`, REST Admin `2025-01`, cursor pagination. Declared stopgap until managed OAuth; returns raw dicts (no normalization).
-- `backend/app/services/connectors/shopify_token.py` — client-credentials + static-token cache (process memory only).
-- `backend/app/services/connectors/registry.py` — `shopify_connector_for(ref)`; **`composio` branch raises `NotImplementedError`** (declared stub).
-- `backend/app/services/connectors/composio_inbox.py` — Composio v3, **Outlook-only slugs**; `discover_active_mail_account()` picks first ACTIVE account → **violates I-09**.
-- `backend/app/services/connectors/refunds.py` — `RefundExecutor`, approval-gated, distinct `SHOPIFY_REFUND_ACCESS_TOKEN` handle. Not a `ShopifyConnector` (capability-by-construction).
-- `backend/app/api/board_webhooks.py` — **reference pattern**: HMAC-SHA256 over raw body (`_verify_webhook_signature` ~`:169`), size-capped `request.stream()`, durable `BoardWebhookPayload`, header redaction, rate/size limits. Owned by another lane (boards) — pattern to port, not edit.
-- `backend/app/models/secret_entry.py` + `services/secret_store.py` — Fernet-encrypted secrets keyed by non-secret handle. Fernet key derived from `SECRETS_KEY`/`LOCAL_AUTH_TOKEN`.
-- `backend/app/models/brand.py` — `Brand` (single-row) + `Store` (holds `provider/external_id/status` + operator profile; **no token column**). No first-class `Connection` entity.
-- Tests: `tests/test_connector_invariants.py` (redaction/port-shape/refund-separation — will need rewrite when port shape changes), `test_shopify_token.py`, `test_connection_health.py`, `test_refund_path.py`, `test_ticket_ingestion.py`, `test_realtime_webhook.py`.
-
-### Conflicts with v2 (must replace/redesign)
-
-- `backend/app/api/ecom_webhooks.py` — commerce email webhook = **shared-secret token, no HMAC, no raw-body verification, no durable inbox, no idempotency**. Fire-and-forget trigger that re-runs the CS loop; content is pulled later via Composio polling. Opposite of `AGENTS.md`§4 / ADR-014.
-- Connector calls are synchronous in-process `httpx` — **no durable action record, no idempotency key, no `outcome_unknown`** (violates I-06/I-07/I-08; writes must route through the A02 durable action port).
-- Inbox account auto-discovery (first ACTIVE) — **violates I-09 exact account binding**.
-
-### Absent (greenfield for v2)
-
-- Normalized commerce model: `orders / order_lines / customers / products / variants / fulfillments / refunds / transactions / tracking / provider_refs` — none exist; data is fetched live and never persisted/normalized.
-- First-class `connections` table decoupled from `stores`; persisted inbox connection.
-- Initial/incremental **sync engine** (cursors, backfill, source/collected timestamps, freshness/coverage). Only `cs_loop.py` inbox polling exists.
-- Cross-cutting read-model contract fields (source, source_updated_at, freshness_status, coverage_status, primary_trace_id) per BUILD §4.
-- `/orders`, `/customers` pages; evidence-backed read tools (`ecom.order.search/get`, `ecom.customer.get`, `ecom.store.list`). Chat live-lookup is the only current read surface.
+- Legacy live-read paths (`metrics.py`, `services/chat.py`) still call `DirectShopifyConnector` directly for raw dicts; migrate to `CommerceReadRepository` during A05/A08 integration.
+- `/orders`,`/customers` React pages do not exist yet (pending A06 primitives, IR-A04-04); the backend read API + tools that power them are built.
 
 ## Current architecture
 
-See `DIAGRAMS.md` (Current vs Target). Today: React Chat → `/ecom/chat` → live `DirectShopifyConnector` REST calls returning raw dicts; KPIs computed on the fly in `metrics.py`; email webhook triggers a CS loop that polls Composio. No durable inbox, no normalized store of commerce truth, no exact-account binding on the inbox path.
+See `DIAGRAMS.md` (Target diagram is now the implemented shape). v2 path: signed webhook → `connectors/webhooks.accept_webhook` → `LocalDurableInbox` (dedup-once) → `SyncEngine` upsert into normalized models → `CommerceReadRepository`/read tools/`api.py` serve evidence-backed reads; external writes go `ActionExecutor` → `ConnectorPort.execute` → durable action+attempts with `outcome_unknown`/reconcile. Exact `ConnectionBinding` gates every call. Legacy live-lookup chat/metrics remain until migrated.
 
 ## Dependencies
 
