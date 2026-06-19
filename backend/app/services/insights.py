@@ -64,12 +64,16 @@ async def generate_insights(session: AsyncSession, brand: Brand) -> list[Insight
             brand_id=brand.id,
             kind="delivery_window",
             severity="warning" if stale else "info",
-            title=f"{stale} order(s) unfulfilled > {_STALE_FULFILL_DAYS} days"
-            if stale
-            else "Fulfillment on track",
-            detail="Investigate carrier delays and update tracking."
-            if stale
-            else "No orders are stuck beyond the delivery window.",
+            title=(
+                f"{stale} order(s) unfulfilled > {_STALE_FULFILL_DAYS} days"
+                if stale
+                else "Fulfillment on track"
+            ),
+            detail=(
+                "Investigate carrier delays and update tracking."
+                if stale
+                else "No orders are stuck beyond the delivery window."
+            ),
             data={"stale_orders": stale},
         )
     )
@@ -100,7 +104,11 @@ async def generate_insights(session: AsyncSession, brand: Brand) -> list[Insight
             brand_id=brand.id,
             kind="ticket_spike",
             severity="warning" if spike else "info",
-            title=f"Ticket spike: {len(recent)} this week" if spike else f"{len(recent)} tickets this week",
+            title=(
+                f"Ticket spike: {len(recent)} this week"
+                if spike
+                else f"{len(recent)} tickets this week"
+            ),
             detail=f"{len(resolved)} auto-resolved, {len(needs_rep)} awaiting a rep.",
             data={"week": len(recent), "resolved": len(resolved), "needs_rep": len(needs_rep)},
         )

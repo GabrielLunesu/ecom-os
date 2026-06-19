@@ -28,9 +28,7 @@ async def ensure_seed(session: AsyncSession) -> Brand:
 
     domain = env_or_setting("SHOPIFY_STORE_URL").strip()
     if domain:
-        existing = (
-            await session.exec(select(Store).where(Store.domain == domain))
-        ).first()
+        existing = (await session.exec(select(Store).where(Store.domain == domain))).first()
         if existing is None:
             connected = bool(env_or_setting("SHOPIFY_ACCESS_TOKEN").strip())
             name = await _resolve_store_name(domain, connected)
@@ -68,9 +66,7 @@ async def list_stores(session: AsyncSession) -> list[Store]:
     return list((await session.exec(select(Store).order_by(Store.name))).all())
 
 
-async def add_store(
-    session: AsyncSession, brand: Brand, domain: str, name: str = ""
-) -> Store:
+async def add_store(session: AsyncSession, brand: Brand, domain: str, name: str = "") -> Store:
     """Add a store with a direct connection ref (status disconnected until tokened)."""
     store = Store(
         brand_id=brand.id,

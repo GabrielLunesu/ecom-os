@@ -38,13 +38,9 @@ def _fernet() -> Fernet:
 async def set_secret(session: AsyncSession, brand: Brand, handle: str, value: str) -> None:
     """Encrypt and upsert a secret, then refresh the in-process cache."""
     ciphertext = _fernet().encrypt(value.encode()).decode()
-    existing = (
-        await session.exec(select(SecretEntry).where(SecretEntry.handle == handle))
-    ).first()
+    existing = (await session.exec(select(SecretEntry).where(SecretEntry.handle == handle))).first()
     if existing is None:
-        session.add(
-            SecretEntry(brand_id=brand.id, handle=handle, ciphertext=ciphertext)
-        )
+        session.add(SecretEntry(brand_id=brand.id, handle=handle, ciphertext=ciphertext))
     else:
         existing.ciphertext = ciphertext
         existing.updated_at = utcnow()
@@ -55,9 +51,7 @@ async def set_secret(session: AsyncSession, brand: Brand, handle: str, value: st
 
 async def unset_secret(session: AsyncSession, brand: Brand, handle: str) -> None:
     """Delete a secret and drop it from the cache."""
-    existing = (
-        await session.exec(select(SecretEntry).where(SecretEntry.handle == handle))
-    ).first()
+    existing = (await session.exec(select(SecretEntry).where(SecretEntry.handle == handle))).first()
     if existing is not None:
         await session.delete(existing)
         await session.commit()

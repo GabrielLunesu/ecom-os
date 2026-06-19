@@ -4,12 +4,26 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlmodel import SQLModel
+from sqlmodel.ext.asyncio.session import AsyncSession
 
+import app.models  # noqa: F401 - ensure SQLModel metadata is fully registered
+from app.core.time import utcnow
+from app.jobs.leased import claim_jobs, enqueue_job
+from app.models.board_webhook_payloads import BoardWebhookPayload
+from app.models.board_webhooks import BoardWebhook
+from app.models.boards import Board
+from app.models.events import DurableJob
+from app.models.gateways import Gateway
+from app.models.organizations import Organization
 from app.services.webhooks import dispatch
 from app.services.webhooks.queue import (
     QueuedInboundDelivery,
@@ -17,6 +31,94 @@ from app.services.webhooks.queue import (
     enqueue_webhook_delivery,
     requeue_if_failed,
 )
+
+
+@asynccontextmanager
+async def _session() -> AsyncIterator[AsyncSession]:
+    engine: AsyncEngine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
+    session = AsyncSession(engine, expire_on_commit=False)
+    try:
+        yield session
+    finally:
+        await session.close()
+        await engine.dispose()
+
+
+async def _seed_webhook_payload(
+    session: AsyncSession,
+) -> tuple[Board, BoardWebhook, BoardWebhookPayload]:
+    organization_id = uuid4()
+    gateway_id = uuid4()
+    board_id = uuid4()
+    session.add(Organization(id=organization_id, name=f"org-{organization_id}"))
+    session.add(
+        Gateway(
+            id=gateway_id,
+            organization_id=organization_id,
+            name="gateway",
+            url="https://gateway.example.local",
+            workspace_root="/tmp/workspace",
+        )
+    )
+    board = Board(
+        id=board_id,
+        organization_id=organization_id,
+        gateway_id=gateway_id,
+        name="Launch board",
+        slug="launch-board",
+        description="Board for launch automation.",
+    )
+    webhook = BoardWebhook(
+        id=uuid4(),
+        board_id=board.id,
+        description="Triage payload.",
+        enabled=True,
+    )
+    payload = BoardWebhookPayload(
+        id=uuid4(),
+        board_id=board.id,
+        webhook_id=webhook.id,
+        payload={"event": "deploy"},
+        content_type="application/json",
+    )
+    session.add(board)
+    session.add(webhook)
+    session.add(payload)
+    await session.flush()
+    return board, webhook, payload
+
+
+async def _enqueue_and_claim_webhook_job(
+    session: AsyncSession,
+    *,
+    board_id: UUID,
+    webhook_id: UUID,
+    payload_id: UUID,
+    worker_id: str,
+    max_attempts: int = 2,
+) -> DurableJob:
+    job, created = await enqueue_job(
+        session,
+        job_type=dispatch.BOARD_WEBHOOK_DURABLE_JOB_TYPE,
+        payload={
+            "board_id": str(board_id),
+            "webhook_id": str(webhook_id),
+            "payload_id": str(payload_id),
+        },
+        deduplication_key=f"test:{payload_id}",
+        concurrency_key=f"board:{board_id}:webhook:{webhook_id}",
+        max_attempts=max_attempts,
+    )
+    assert created is True
+    claimed = await claim_jobs(
+        session,
+        worker_id=worker_id,
+        job_type=dispatch.BOARD_WEBHOOK_DURABLE_JOB_TYPE,
+    )
+    assert [item.id for item in claimed] == [job.id]
+    return claimed[0]
 
 
 class _FakeRedis:
@@ -167,7 +269,9 @@ async def test_dispatch_flush_processes_items_and_throttles(
 
 
 @pytest.mark.asyncio
-async def test_dispatch_flush_requeues_on_process_error(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_dispatch_flush_requeues_on_process_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     item = _FakeQueuedItem()
     _patch_dequeue(monkeypatch, [item, None])
 
@@ -192,7 +296,9 @@ async def test_dispatch_flush_requeues_on_process_error(monkeypatch: pytest.Monk
 
 
 @pytest.mark.asyncio
-async def test_dispatch_flush_recovers_from_dequeue_error(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_dispatch_flush_recovers_from_dequeue_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     item = _FakeQueuedItem()
     call_count = 0
 
@@ -224,7 +330,131 @@ async def test_dispatch_flush_recovers_from_dequeue_error(monkeypatch: pytest.Mo
 
 
 @pytest.mark.asyncio
-async def test_notify_target_agent_prefers_mapped_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_process_durable_webhook_job_completes_after_notification(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with _session() as session:
+        board, webhook, payload = await _seed_webhook_payload(session)
+        job = await _enqueue_and_claim_webhook_job(
+            session,
+            board_id=board.id,
+            webhook_id=webhook.id,
+            payload_id=payload.id,
+            worker_id="worker-a",
+        )
+        notified: list[UUID] = []
+
+        async def _notify(
+            *,
+            session: AsyncSession,
+            board: Board,
+            webhook: BoardWebhook,
+            payload: BoardWebhookPayload,
+        ) -> None:
+            del session, board, webhook
+            notified.append(payload.id)
+
+        monkeypatch.setattr(dispatch, "_notify_target_agent", _notify)
+
+        ok = await dispatch.process_durable_webhook_job(
+            session,
+            job,
+            worker_id="worker-a",
+        )
+
+        assert ok is True
+        assert notified == [payload.id]
+        assert job.state == "succeeded"
+        assert job.completed_at is not None
+        assert job.lease_owner is None
+
+
+@pytest.mark.asyncio
+async def test_process_durable_webhook_job_retries_then_dead_letters(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async with _session() as session:
+        board, webhook, payload = await _seed_webhook_payload(session)
+        job = await _enqueue_and_claim_webhook_job(
+            session,
+            board_id=board.id,
+            webhook_id=webhook.id,
+            payload_id=payload.id,
+            worker_id="worker-a",
+            max_attempts=2,
+        )
+
+        async def _notify(
+            *,
+            session: AsyncSession,
+            board: Board,
+            webhook: BoardWebhook,
+            payload: BoardWebhookPayload,
+        ) -> None:
+            del session, board, webhook, payload
+            raise RuntimeError("gateway unavailable")
+
+        monkeypatch.setattr(dispatch, "_notify_target_agent", _notify)
+        monkeypatch.setattr(dispatch.settings, "rq_dispatch_retry_base_seconds", 0)
+
+        first_ok = await dispatch.process_durable_webhook_job(
+            session,
+            job,
+            worker_id="worker-a",
+        )
+        assert first_ok is False
+        assert job.state == "failed_retryable"
+        assert job.last_error_code == "webhook_dispatch_failed"
+
+        job.next_run_at = utcnow() - timedelta(seconds=1)
+        session.add(job)
+        await session.flush()
+        claimed = await claim_jobs(
+            session,
+            worker_id="worker-b",
+            job_type=dispatch.BOARD_WEBHOOK_DURABLE_JOB_TYPE,
+        )
+        assert [item.id for item in claimed] == [job.id]
+
+        second_ok = await dispatch.process_durable_webhook_job(
+            session,
+            claimed[0],
+            worker_id="worker-b",
+        )
+
+        assert second_ok is False
+        assert claimed[0].state == "dead_letter"
+        assert claimed[0].attempts == 2
+        assert claimed[0].last_error == "gateway unavailable"
+
+
+@pytest.mark.asyncio
+async def test_process_durable_webhook_job_dead_letters_stale_payload() -> None:
+    async with _session() as session:
+        job = await _enqueue_and_claim_webhook_job(
+            session,
+            board_id=uuid4(),
+            webhook_id=uuid4(),
+            payload_id=uuid4(),
+            worker_id="worker-a",
+            max_attempts=3,
+        )
+
+        ok = await dispatch.process_durable_webhook_job(
+            session,
+            job,
+            worker_id="worker-a",
+        )
+
+        assert ok is False
+        assert job.state == "dead_letter"
+        assert job.last_error_code == "webhook_payload_unavailable"
+
+
+@pytest.mark.asyncio
+async def test_notify_target_agent_prefers_mapped_agent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     agent_id = uuid4()
     mapped_agent = SimpleNamespace(
         id=agent_id,
@@ -289,7 +519,9 @@ async def test_notify_target_agent_prefers_mapped_agent(monkeypatch: pytest.Monk
 
 
 @pytest.mark.asyncio
-async def test_notify_target_agent_falls_back_to_lead(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_notify_target_agent_falls_back_to_lead(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     lead_agent = SimpleNamespace(
         id=uuid4(),
         name="Lead Agent",
@@ -345,7 +577,9 @@ async def test_notify_target_agent_falls_back_to_lead(monkeypatch: pytest.Monkey
     assert sent == [{"session_key": "lead:session", "agent_name": "Lead Agent"}]
 
 
-def test_dispatch_run_entrypoint_calls_async_flush(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_dispatch_run_entrypoint_calls_async_flush(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     called: list[bool] = []
 
     async def _flush() -> None:

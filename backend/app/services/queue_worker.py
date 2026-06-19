@@ -16,6 +16,7 @@ from app.services.openclaw.lifecycle_queue import (
 from app.services.openclaw.lifecycle_reconcile import process_lifecycle_queue_task
 from app.services.queue import QueuedTask, dequeue_task
 from app.services.webhooks.dispatch import (
+    flush_durable_webhook_jobs,
     process_webhook_queue_task,
     requeue_webhook_queue_task,
 )
@@ -23,6 +24,7 @@ from app.services.webhooks.queue import TASK_TYPE as WEBHOOK_TASK_TYPE
 
 logger = get_logger(__name__)
 _WORKER_BLOCK_TIMEOUT_SECONDS = 5.0
+_WEBHOOK_WORKER_MODES = {"legacy", "durable", "dual"}
 
 
 @dataclass(frozen=True)
@@ -56,9 +58,29 @@ def _compute_jitter(base_delay: float) -> float:
     return random.uniform(0, min(settings.rq_dispatch_retry_max_seconds / 10, base_delay * 0.1))
 
 
+def _webhook_worker_mode() -> str:
+    mode = settings.webhook_dispatch_worker_mode.strip().lower()
+    if mode not in _WEBHOOK_WORKER_MODES:
+        logger.warning(
+            "queue.worker.invalid_webhook_dispatch_mode",
+            extra={"mode": settings.webhook_dispatch_worker_mode},
+        )
+        return "legacy"
+    return mode
+
+
 async def flush_queue(*, block: bool = False, block_timeout: float = 0) -> int:
     """Consume one queue batch and dispatch by task type."""
-    processed = 0
+    mode = _webhook_worker_mode()
+    if mode in {"durable", "dual"}:
+        processed = await flush_durable_webhook_jobs()
+        if mode == "durable":
+            if processed == 0 and (block or block_timeout):
+                await asyncio.sleep(block_timeout or _WORKER_BLOCK_TIMEOUT_SECONDS)
+            return processed
+    else:
+        processed = 0
+
     while True:
         try:
             task = dequeue_task(

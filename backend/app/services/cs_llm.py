@@ -130,11 +130,7 @@ async def _messages(payload: dict[str, Any]) -> dict[str, Any]:
 
 def _text(reply: dict[str, Any]) -> str:
     """Concatenate the text blocks of an Anthropic Messages response."""
-    parts = [
-        b.get("text", "")
-        for b in reply.get("content", [])
-        if b.get("type") == "text"
-    ]
+    parts = [b.get("text", "") for b in reply.get("content", []) if b.get("type") == "text"]
     return "".join(parts).strip()
 
 

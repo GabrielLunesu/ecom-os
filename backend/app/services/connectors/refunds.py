@@ -80,7 +80,11 @@ class RefundExecutor:
             tx_resp.raise_for_status()
             txns = tx_resp.json().get("transactions", [])
             parent = next(
-                (t for t in txns if t.get("kind") in ("sale", "capture") and t.get("status") == "success"),
+                (
+                    t
+                    for t in txns
+                    if t.get("kind") in ("sale", "capture") and t.get("status") == "success"
+                ),
                 None,
             )
             if parent is None:

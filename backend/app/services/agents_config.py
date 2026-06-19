@@ -58,7 +58,12 @@ async def ensure_seed_agents(session: AsyncSession, brand: Brand) -> None:
                 voice="Friendly, concise, on-brand. Always cite policy and the tracking page.",
                 sops="WISMO: look up the order, cite the shipping policy, redirect to the "
                 "tracking page, then auto-close. Anything else -> escalate to a rep.",
-                allowed_tools=["read_orders", "read_fulfillments", "read_customers", "write_discounts"],
+                allowed_tools=[
+                    "read_orders",
+                    "read_fulfillments",
+                    "read_customers",
+                    "write_discounts",
+                ],
                 schedule="webhook",
                 enabled=True,
             )

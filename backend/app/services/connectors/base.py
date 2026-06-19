@@ -58,9 +58,7 @@ class ShopifyConnector(abc.ABC):
 
     # --- discounts (Tier 0/1 CS capability) --------------------------------
     @abc.abstractmethod
-    async def create_discount(
-        self, *, title: str, percentage: float, code: str
-    ) -> dict[str, Any]:
+    async def create_discount(self, *, title: str, percentage: float, code: str) -> dict[str, Any]:
         """Create a percentage discount code. The ONLY write the CS agent may do."""
 
 
@@ -75,7 +73,9 @@ class InboxConnector(abc.ABC):
         """Confirm the mailbox is reachable; used by the startup health check."""
 
     @abc.abstractmethod
-    async def list_messages(self, *, unread_only: bool = True, limit: int = 25) -> list[dict[str, Any]]:
+    async def list_messages(
+        self, *, unread_only: bool = True, limit: int = 25
+    ) -> list[dict[str, Any]]:
         """List recent inbound messages for ticket ingestion."""
 
     @abc.abstractmethod

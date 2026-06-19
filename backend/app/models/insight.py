@@ -22,7 +22,9 @@ class Insight(QueryModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     brand_id: UUID = Field(foreign_key="brands.id", index=True)
-    kind: str = Field(default="", index=True)  # delivery_window | refund_risk | ticket_spike | health
+    kind: str = Field(
+        default="", index=True
+    )  # delivery_window | refund_risk | ticket_spike | health
     severity: str = Field(default="info")  # info | warning | critical
     title: str = Field(default="")
     detail: str = Field(default="")

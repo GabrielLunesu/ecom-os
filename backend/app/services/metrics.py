@@ -16,8 +16,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.time import utcnow
 from app.models.brand import Store
-from app.services.connectors.secrets import ConnectionRef
 from app.services.connectors.registry import shopify_connector_for
+from app.services.connectors.secrets import ConnectionRef
 from app.services.stores import list_stores
 
 # KPIs we cannot compute without read_reports; surfaced as unavailable.
@@ -38,9 +38,7 @@ class StoreKpis:
     atc_rate: float | None
 
 
-def _kpis_from_orders(
-    store_id: str, store_name: str, orders: list[dict[str, Any]]
-) -> StoreKpis:
+def _kpis_from_orders(store_id: str, store_name: str, orders: list[dict[str, Any]]) -> StoreKpis:
     paid = [o for o in orders if o.get("financial_status") in (None, "paid", "partially_refunded")]
     revenue = sum(float(o.get("total_price") or 0) for o in paid)
     count = len(paid)

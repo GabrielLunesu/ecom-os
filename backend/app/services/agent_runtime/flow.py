@@ -77,6 +77,8 @@ class FlowCSRuntime(AgentRuntime):
         ticket.status = "needs_rep"
         ticket.updated_at = utcnow()
         session.add(ticket)
-        session.add(TicketAudit(ticket_id=ticket.id, action="escalated", actor="cs-flow", detail=reason))
+        session.add(
+            TicketAudit(ticket_id=ticket.id, action="escalated", actor="cs-flow", detail=reason)
+        )
         await session.commit()
         return HandlingResult("escalated", "needs_rep", False, reason)

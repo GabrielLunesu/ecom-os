@@ -23,7 +23,6 @@ from app.services.connectors.composio_inbox import (
 )
 from app.services.connectors.secrets import ConnectionRef
 
-
 # Local-parts that indicate automated/marketing senders, not support requests.
 _AUTOMATED_MARKERS = (
     "noreply",
@@ -57,9 +56,7 @@ async def _seen(session: AsyncSession, external_id: str) -> bool:
     if not external_id:
         return False
     found = (
-        await session.exec(
-            select(TicketMessage).where(TicketMessage.external_id == external_id)
-        )
+        await session.exec(select(TicketMessage).where(TicketMessage.external_id == external_id))
     ).first()
     return found is not None
 
@@ -202,7 +199,9 @@ async def append_reply(session: AsyncSession, ticket: Ticket, msg: dict[str, Any
         note = "customer replied"
     ticket.updated_at = utcnow()
     session.add(ticket)
-    session.add(TicketAudit(ticket_id=ticket.id, action="customer_reply", actor="system", detail=note))
+    session.add(
+        TicketAudit(ticket_id=ticket.id, action="customer_reply", actor="system", detail=note)
+    )
     await session.commit()
 
 

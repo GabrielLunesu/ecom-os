@@ -46,10 +46,14 @@ class FakeInbox(InboxConnector):
     async def health(self) -> dict[str, Any]:
         return {"status": "ACTIVE"}
 
-    async def list_messages(self, *, unread_only: bool = True, limit: int = 25) -> list[dict[str, Any]]:
+    async def list_messages(
+        self, *, unread_only: bool = True, limit: int = 25
+    ) -> list[dict[str, Any]]:
         return []
 
-    async def send_message(self, *, to: str, subject: str, body: str, in_reply_to: str | None = None) -> dict[str, Any]:
+    async def send_message(
+        self, *, to: str, subject: str, body: str, in_reply_to: str | None = None
+    ) -> dict[str, Any]:
         self.sent.append({"to": to, "subject": subject, "body": body, "in_reply_to": in_reply_to})
         return {"ok": True}
 
@@ -75,7 +79,9 @@ async def _seeded_session() -> tuple[AsyncSession, Brand]:
     return session, brand
 
 
-async def _ticket(session: AsyncSession, brand: Brand, *, subject: str, body: str, status: str = "new") -> Ticket:
+async def _ticket(
+    session: AsyncSession, brand: Brand, *, subject: str, body: str, status: str = "new"
+) -> Ticket:
     t = Ticket(
         brand_id=brand.id,
         subject=subject,
@@ -87,7 +93,13 @@ async def _ticket(session: AsyncSession, brand: Brand, *, subject: str, body: st
     session.add(t)
     await session.flush()
     session.add(
-        TicketMessage(ticket_id=t.id, direction="inbound", author="shopper@example.com", body=body, untrusted=True)
+        TicketMessage(
+            ticket_id=t.id,
+            direction="inbound",
+            author="shopper@example.com",
+            body=body,
+            untrusted=True,
+        )
     )
     await session.commit()
     await session.refresh(t)
@@ -130,7 +142,9 @@ async def test_wismo_resolves_and_sends_reply() -> None:
     kinds = {e.kind for e in ev}
     assert {"order_lookup", "policy_cite", "tracking"} <= kinds
     # Outbound message stored (not untrusted).
-    out = [m for m in (await session.exec(select(TicketMessage))).all() if m.direction == "outbound"]
+    out = [
+        m for m in (await session.exec(select(TicketMessage))).all() if m.direction == "outbound"
+    ]
     assert len(out) == 1 and out[0].untrusted is False
 
 

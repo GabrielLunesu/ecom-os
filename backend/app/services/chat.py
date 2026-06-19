@@ -83,8 +83,8 @@ async def answer(session: AsyncSession, message: str) -> dict[str, object]:
 
     return {
         "answer": (
-            "I'm a read-only copilot. Ask me to look up an order (e.g. \"order #1001\"), "
-            "report KPIs (\"revenue last 30 days\"), or search the brand vault."
+            'I\'m a read-only copilot. Ask me to look up an order (e.g. "order #1001"), '
+            'report KPIs ("revenue last 30 days"), or search the brand vault.'
         ),
         "sources": sources,
     }

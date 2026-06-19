@@ -8,10 +8,9 @@ from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.models.brand import Brand
-from app.models.tickets import TicketMessage
+from app.models.tickets import Ticket, TicketMessage
 from app.services import tickets as tickets_svc
 from app.services.connectors.composio_inbox import normalize_message
-from app.models.tickets import Ticket
 from app.services.tickets import (
     _is_support_candidate,
     append_reply,
@@ -60,7 +59,9 @@ async def test_inbound_message_is_untrusted() -> None:
         brand = Brand(name="Test")
         session.add(brand)
         await session.flush()
-        ticket = await create_ticket_from_message(session, brand, normalize_message(SAMPLE_GRAPH_MSG))
+        ticket = await create_ticket_from_message(
+            session, brand, normalize_message(SAMPLE_GRAPH_MSG)
+        )
         assert ticket.status == "new"
         msgs = await ticket_messages(session, ticket.id)
         assert len(msgs) == 1
@@ -110,8 +111,13 @@ async def test_reply_resumes_awaiting_ticket() -> None:
         brand = Brand(name="Test")
         session.add(brand)
         await session.flush()
-        t = Ticket(brand_id=brand.id, subject="Refund", customer_email="s@x.com",
-                   status="awaiting_customer", external_ref="conv-1")
+        t = Ticket(
+            brand_id=brand.id,
+            subject="Refund",
+            customer_email="s@x.com",
+            status="awaiting_customer",
+            external_ref="conv-1",
+        )
         session.add(t)
         await session.commit()
         await session.refresh(t)
@@ -127,10 +133,17 @@ async def test_reply_to_needs_rep_stays_sticky() -> None:
         brand = Brand(name="Test")
         session.add(brand)
         await session.flush()
-        t = Ticket(brand_id=brand.id, subject="Complaint", customer_email="s@x.com",
-                   status="needs_rep", external_ref="conv-2")
+        t = Ticket(
+            brand_id=brand.id,
+            subject="Complaint",
+            customer_email="s@x.com",
+            status="needs_rep",
+            external_ref="conv-2",
+        )
         session.add(t)
         await session.commit()
         await session.refresh(t)
-        await append_reply(session, t, normalize_message(dict(SAMPLE_GRAPH_MSG, id="r2", conversationId="conv-2")))
+        await append_reply(
+            session, t, normalize_message(dict(SAMPLE_GRAPH_MSG, id="r2", conversationId="conv-2"))
+        )
         assert t.status == "needs_rep"  # Invariant 3: never re-auto

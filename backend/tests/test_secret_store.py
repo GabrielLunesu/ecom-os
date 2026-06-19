@@ -56,9 +56,7 @@ async def test_set_secret_encrypts_at_rest_and_caches() -> None:
     assert get_cached("COMPOSIO_API_KEY") == PLAINTEXT
 
     row = (
-        await session.exec(
-            select(SecretEntry).where(SecretEntry.handle == "COMPOSIO_API_KEY")
-        )
+        await session.exec(select(SecretEntry).where(SecretEntry.handle == "COMPOSIO_API_KEY"))
     ).first()
     assert row is not None
     # Stored ciphertext is encrypted, not the plaintext.

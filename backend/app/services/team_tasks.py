@@ -23,9 +23,7 @@ async def ensure_seed_tasks(session: AsyncSession, brand: Brand) -> None:
     existing = (await session.exec(select(TeamTask).limit(1))).first()
     if existing is None:
         for title, assignee, status in _SEED:
-            session.add(
-                TeamTask(brand_id=brand.id, title=title, assignee=assignee, status=status)
-            )
+            session.add(TeamTask(brand_id=brand.id, title=title, assignee=assignee, status=status))
         await session.commit()
 
 

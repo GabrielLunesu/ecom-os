@@ -5,13 +5,17 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlmodel import col, select
 
-from app.api.deps import get_board_for_user_read, get_board_for_user_write, get_board_or_404
+from app.api.deps import (
+    get_board_for_user_read,
+    get_board_for_user_write,
+    get_board_or_404,
+)
 from app.core.client_ip import get_client_ip
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -20,6 +24,8 @@ from app.core.time import utcnow
 from app.db import crud
 from app.db.pagination import paginate
 from app.db.session import get_session
+from app.events.durable import accept_inbox_event, payload_hash
+from app.jobs.leased import enqueue_job
 from app.models.agents import Agent
 from app.models.board_memory import BoardMemory
 from app.models.board_webhook_payloads import BoardWebhookPayload
@@ -50,6 +56,13 @@ BOARD_USER_READ_DEP = Depends(get_board_for_user_read)
 BOARD_USER_WRITE_DEP = Depends(get_board_for_user_write)
 BOARD_OR_404_DEP = Depends(get_board_or_404)
 logger = get_logger(__name__)
+_WEBHOOK_SOURCE_EVENT_ID_HEADERS = (
+    "x-webhook-event-id",
+    "x-event-id",
+    "x-request-id",
+    "x-github-delivery",
+    "x-shopify-webhook-id",
+)
 
 
 def _webhook_endpoint_path(board_id: UUID, webhook_id: UUID) -> str:
@@ -154,7 +167,10 @@ def _decode_payload(
     normalized_content_type = (content_type or "").lower()
     should_parse_json = "application/json" in normalized_content_type
     if not should_parse_json:
-        should_parse_json = body_text.startswith(("{", "[", '"')) or body_text in {"true", "false"}
+        should_parse_json = body_text.startswith(("{", "[", '"')) or body_text in {
+            "true",
+            "false",
+        }
 
     if should_parse_json:
         try:
@@ -237,6 +253,20 @@ def _captured_headers(
     return captured or None
 
 
+def _webhook_source_event_id(
+    request: Request,
+    *,
+    payload_id: UUID,
+) -> tuple[str, str]:
+    for header in _WEBHOOK_SOURCE_EVENT_ID_HEADERS:
+        raw = request.headers.get(header)
+        if raw is not None:
+            value = raw.strip()
+            if value:
+                return f"{header}:{value}", header
+    return f"payload:{payload_id}", "payload_id_fallback"
+
+
 def _payload_preview(
     value: dict[str, object] | list[object] | str | int | float | bool | None,
 ) -> str:
@@ -248,6 +278,64 @@ def _payload_preview(
         except TypeError:
             preview = str(value)
     return preview
+
+
+async def _persist_durable_board_webhook_trigger(
+    *,
+    session: AsyncSession,
+    board: Board,
+    webhook: BoardWebhook,
+    payload: BoardWebhookPayload,
+    request: Request,
+    raw_body: bytes,
+) -> tuple[bool, bool]:
+    source_event_id, source_event_id_source = _webhook_source_event_id(
+        request,
+        payload_id=payload.id,
+    )
+    source_scope = f"board:{board.id}:webhook:{webhook.id}"
+    event_payload: dict[str, Any] = {
+        "board_id": str(board.id),
+        "webhook_id": str(webhook.id),
+        "payload_id": str(payload.id),
+        "payload": payload.payload,
+        "headers": payload.headers or {},
+        "source_ip": payload.source_ip,
+        "content_type": payload.content_type,
+        "received_at": payload.received_at.isoformat(),
+    }
+    event, event_created = await accept_inbox_event(
+        session,
+        event_type="board_webhook.payload.received",
+        source="board_webhook",
+        source_scope=source_scope,
+        source_event_id=source_event_id,
+        payload=event_payload,
+        occurred_at=payload.received_at,
+        actor_type="external",
+        actor_id=f"board_webhook:{webhook.id}",
+        coverage="imported",
+        verification="valid",
+        metadata={
+            "source_event_id_source": source_event_id_source,
+            "raw_body_hash": payload_hash(raw_body),
+            "compat_payload_table": "board_webhook_payloads",
+        },
+    )
+    _job, job_created = await enqueue_job(
+        session,
+        job_type="board_webhook.payload.received",
+        payload={
+            "inbox_event_id": str(event.id),
+            "board_id": str(board.id),
+            "webhook_id": str(webhook.id),
+            "payload_id": str(payload.id),
+        },
+        deduplication_key=f"durable_inbox_event:{event.id}",
+        concurrency_key=source_scope,
+        max_attempts=max(1, settings.rq_dispatch_max_retries),
+    )
+    return event_created, job_created
 
 
 def _webhook_memory_content(
@@ -447,7 +535,8 @@ async def delete_board_webhook(
 
 
 @router.get(
-    "/{webhook_id}/payloads", response_model=DefaultLimitOffsetPage[BoardWebhookPayloadRead]
+    "/{webhook_id}/payloads",
+    response_model=DefaultLimitOffsetPage[BoardWebhookPayloadRead],
 )
 async def list_board_webhook_payloads(
     webhook_id: UUID,
@@ -585,7 +674,34 @@ async def ingest_board_webhook(
         is_chat=False,
     )
     session.add(memory)
-    await session.commit()
+    try:
+        (
+            durable_event_created,
+            durable_job_created,
+        ) = await _persist_durable_board_webhook_trigger(
+            session=session,
+            board=board,
+            webhook=webhook,
+            payload=payload,
+            request=request,
+            raw_body=raw_body,
+        )
+        await session.commit()
+    except Exception as exc:
+        await session.rollback()
+        logger.exception(
+            "webhook.ingest.durable_acceptance_failed",
+            extra={
+                "board_id": str(board.id),
+                "webhook_id": str(webhook.id),
+                "payload_id": str(payload.id),
+                "error": str(exc),
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Webhook could not be durably accepted.",
+        ) from exc
     logger.info(
         "webhook.ingest.persisted",
         extra={
@@ -593,17 +709,21 @@ async def ingest_board_webhook(
             "board_id": str(board.id),
             "webhook_id": str(webhook.id),
             "memory_id": str(memory.id),
+            "durable_event_created": durable_event_created,
+            "durable_job_created": durable_job_created,
         },
     )
 
-    enqueued = enqueue_webhook_delivery(
-        QueuedInboundDelivery(
-            board_id=board.id,
-            webhook_id=webhook.id,
-            payload_id=payload.id,
-            received_at=payload.received_at,
-        ),
-    )
+    enqueued = False
+    if durable_job_created:
+        enqueued = enqueue_webhook_delivery(
+            QueuedInboundDelivery(
+                board_id=board.id,
+                webhook_id=webhook.id,
+                payload_id=payload.id,
+                received_at=payload.received_at,
+            ),
+        )
     logger.info(
         "webhook.ingest.enqueued",
         extra={
@@ -611,9 +731,10 @@ async def ingest_board_webhook(
             "board_id": str(board.id),
             "webhook_id": str(webhook.id),
             "enqueued": enqueued,
+            "durable_job_created": durable_job_created,
         },
     )
-    if not enqueued:
+    if durable_job_created and not enqueued:
         # Preserve historical behavior by still notifying synchronously if queueing fails.
         await _notify_lead_on_webhook_payload(
             session=session,

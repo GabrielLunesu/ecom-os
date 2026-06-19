@@ -18,17 +18,47 @@ from app.api.deps import ActorContext, require_org_member, require_user_or_agent
 from app.core.time import utcnow
 from app.db.pagination import paginate
 from app.db.session import async_session_maker, get_session
+from app.models.actions import Action, ActionAttempt, ActionStateHistory
 from app.models.activity_events import ActivityEvent
 from app.models.agents import Agent
 from app.models.boards import Board
 from app.models.tasks import Task
-from app.schemas.activity_events import ActivityEventRead, ActivityTaskCommentFeedItemRead
+from app.models.traces import (
+    AuditRecord,
+    Evidence,
+    EvidenceLink,
+    Incident,
+    Run,
+    Span,
+    ToolInvocation,
+    Trace,
+)
+from app.schemas.activity_events import (
+    ActivityEventRead,
+    ActivityTaskCommentFeedItemRead,
+)
 from app.schemas.pagination import DefaultLimitOffsetPage
+from app.schemas.traces import (
+    ActionAttemptRead,
+    ActionDetailRead,
+    ActionRead,
+    ActionStateHistoryRead,
+    AuditRecordRead,
+    EvidenceRead,
+    IncidentDetailRead,
+    IncidentRead,
+    RunRead,
+    SpanRead,
+    ToolInvocationRead,
+    TraceDetailRead,
+    TraceRead,
+)
 from app.services.organizations import (
     OrganizationContext,
     get_active_membership,
     list_accessible_board_ids,
 )
+from app.traces.recorder import ROLE_ACCESS
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Sequence
@@ -47,6 +77,7 @@ ORG_MEMBER_DEP = Depends(require_org_member)
 BOARD_ID_QUERY = Query(default=None)
 SINCE_QUERY = Query(default=None)
 _RUNTIME_TYPE_REFERENCES = (UUID,)
+AUDIT_READ_ROLES = {"owner", "admin", "operator"}
 
 
 def _parse_since(value: str | None) -> datetime | None:
@@ -76,6 +107,66 @@ def _agent_role(agent: Agent | None) -> str | None:
         role = raw.strip()
         return role or None
     return None
+
+
+async def _evidence_role_for_actor(session: AsyncSession, actor: ActorContext) -> str:
+    """Resolve the caller to a trace-ledger evidence access role."""
+    if actor.actor_type == "agent":
+        agent_role = _agent_role(actor.agent)
+        if agent_role in ROLE_ACCESS:
+            return agent_role
+        return "operator"
+    if actor.user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    member = await get_active_membership(session, actor.user)
+    if member is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    role = member.role.strip().lower()
+    if role == "member":
+        return "viewer"
+    if role in ROLE_ACCESS:
+        return role
+    return "viewer"
+
+
+async def _require_audit_read_role(session: AsyncSession, actor: ActorContext) -> str:
+    role = await _evidence_role_for_actor(session, actor)
+    if role not in AUDIT_READ_ROLES:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    return role
+
+
+async def _list_evidence_for_targets(
+    session: AsyncSession,
+    *,
+    role: str,
+    targets: Sequence[tuple[str, UUID]],
+) -> list[Evidence]:
+    if not targets:
+        return []
+    allowed = ROLE_ACCESS.get(role, {"public"})
+    target_filters = [
+        and_(
+            col(EvidenceLink.target_type) == target_type,
+            col(EvidenceLink.target_id) == target_id,
+        )
+        for target_type, target_id in targets
+    ]
+    statement = (
+        select(Evidence)
+        .join(EvidenceLink, col(EvidenceLink.evidence_id) == col(Evidence.id))
+        .where(col(Evidence.access_label).in_(allowed))
+        .where(or_(*target_filters))
+        .order_by(desc(col(Evidence.collected_at)))
+    )
+    evidence: list[Evidence] = []
+    seen: set[UUID] = set()
+    for item in (await session.exec(statement)).all():
+        if item.id in seen:
+            continue
+        evidence.append(item)
+        seen.add(item.id)
+    return evidence
 
 
 def _build_activity_route(
@@ -291,6 +382,306 @@ async def list_activity(
         return events
 
     return await paginate(session, statement, transformer=_transform)
+
+
+@router.get("/traces", response_model=DefaultLimitOffsetPage[TraceRead])
+async def list_traces(
+    trace_type: str | None = Query(default=None),
+    entity_type: str | None = Query(default=None),
+    entity_id: str | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
+    coverage: str | None = Query(default=None),
+    session: AsyncSession = SESSION_DEP,
+    actor: ActorContext = ACTOR_DEP,
+) -> LimitOffsetPage[TraceRead]:
+    """List durable trace summaries visible to the calling actor."""
+    await _evidence_role_for_actor(session, actor)
+    if coverage is not None and coverage not in {
+        "verified",
+        "observed",
+        "imported",
+        "unknown",
+    }:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    statement = select(Trace).order_by(desc(col(Trace.started_at)))
+    if trace_type:
+        statement = statement.where(Trace.trace_type == trace_type)
+    if entity_type:
+        statement = statement.where(Trace.primary_entity_type == entity_type)
+    if entity_id:
+        statement = statement.where(Trace.primary_entity_id == entity_id)
+    if status_filter:
+        statement = statement.where(Trace.status == status_filter)
+    if coverage:
+        statement = statement.where(Trace.coverage == coverage)
+
+    def _transform(items: Sequence[Any]) -> Sequence[Any]:
+        return [TraceRead.model_validate(item, from_attributes=True) for item in items]
+
+    return await paginate(session, statement, transformer=_transform)
+
+
+@router.get("/traces/{trace_id}", response_model=TraceDetailRead)
+async def get_trace_detail(
+    trace_id: UUID,
+    session: AsyncSession = SESSION_DEP,
+    actor: ActorContext = ACTOR_DEP,
+) -> TraceDetailRead:
+    """Return a trace timeline with evidence filtered for the caller's role."""
+    role = await _evidence_role_for_actor(session, actor)
+    trace = await session.get(Trace, trace_id)
+    if trace is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    runs = list(
+        (
+            await session.exec(
+                select(Run).where(Run.trace_id == trace_id).order_by(asc(col(Run.started_at)))
+            )
+        ).all()
+    )
+    spans = list(
+        (
+            await session.exec(
+                select(Span).where(Span.trace_id == trace_id).order_by(asc(col(Span.started_at)))
+            )
+        ).all()
+    )
+    tool_invocations = list(
+        (
+            await session.exec(
+                select(ToolInvocation)
+                .where(ToolInvocation.trace_id == trace_id)
+                .order_by(asc(col(ToolInvocation.started_at)))
+            )
+        ).all()
+    )
+    actions = list(
+        (
+            await session.exec(
+                select(Action)
+                .where(Action.trace_id == trace_id)
+                .order_by(asc(col(Action.created_at)))
+            )
+        ).all()
+    )
+    targets = [("trace", trace.id)]
+    targets.extend(("run", item.id) for item in runs)
+    targets.extend(("span", item.id) for item in spans)
+    targets.extend(("tool_invocation", item.id) for item in tool_invocations)
+    targets.extend(("action", item.id) for item in actions)
+    evidence = await _list_evidence_for_targets(session, role=role, targets=targets)
+    return TraceDetailRead(
+        trace=TraceRead.model_validate(trace, from_attributes=True),
+        runs=[RunRead.model_validate(item, from_attributes=True) for item in runs],
+        spans=[SpanRead.model_validate(item, from_attributes=True) for item in spans],
+        tool_invocations=[
+            ToolInvocationRead.model_validate(item, from_attributes=True)
+            for item in tool_invocations
+        ],
+        actions=[ActionRead.model_validate(item, from_attributes=True) for item in actions],
+        evidence=[EvidenceRead.model_validate(item, from_attributes=True) for item in evidence],
+    )
+
+
+@router.get("/actions", response_model=DefaultLimitOffsetPage[ActionRead])
+async def list_actions(
+    trace_id: UUID | None = Query(default=None),
+    state: str | None = Query(default=None),
+    action_type: str | None = Query(default=None),
+    target_type: str | None = Query(default=None),
+    target_id: str | None = Query(default=None),
+    session: AsyncSession = SESSION_DEP,
+    actor: ActorContext = ACTOR_DEP,
+) -> LimitOffsetPage[ActionRead]:
+    """List durable external-write action intents."""
+    await _evidence_role_for_actor(session, actor)
+    statement = select(Action).order_by(desc(col(Action.created_at)))
+    if trace_id is not None:
+        statement = statement.where(Action.trace_id == trace_id)
+    if state:
+        statement = statement.where(Action.state == state)
+    if action_type:
+        statement = statement.where(Action.action_type == action_type)
+    if target_type:
+        statement = statement.where(Action.target_type == target_type)
+    if target_id:
+        statement = statement.where(Action.target_id == target_id)
+
+    def _transform(items: Sequence[Any]) -> Sequence[Any]:
+        return [ActionRead.model_validate(item, from_attributes=True) for item in items]
+
+    return await paginate(session, statement, transformer=_transform)
+
+
+@router.get("/actions/{action_id}", response_model=ActionDetailRead)
+async def get_action_detail(
+    action_id: UUID,
+    session: AsyncSession = SESSION_DEP,
+    actor: ActorContext = ACTOR_DEP,
+) -> ActionDetailRead:
+    """Return durable action state, attempts, history, and filtered evidence."""
+    role = await _evidence_role_for_actor(session, actor)
+    action = await session.get(Action, action_id)
+    if action is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    attempts = list(
+        (
+            await session.exec(
+                select(ActionAttempt)
+                .where(ActionAttempt.action_id == action_id)
+                .order_by(asc(col(ActionAttempt.attempt_number)))
+            )
+        ).all()
+    )
+    history = list(
+        (
+            await session.exec(
+                select(ActionStateHistory)
+                .where(ActionStateHistory.action_id == action_id)
+                .order_by(asc(col(ActionStateHistory.created_at)))
+            )
+        ).all()
+    )
+    evidence = await _list_evidence_for_targets(
+        session,
+        role=role,
+        targets=[("action", action.id)],
+    )
+    return ActionDetailRead(
+        action=ActionRead.model_validate(action, from_attributes=True),
+        attempts=[
+            ActionAttemptRead.model_validate(item, from_attributes=True) for item in attempts
+        ],
+        history=[
+            ActionStateHistoryRead.model_validate(item, from_attributes=True) for item in history
+        ],
+        evidence=[EvidenceRead.model_validate(item, from_attributes=True) for item in evidence],
+    )
+
+
+@router.get("/incidents", response_model=DefaultLimitOffsetPage[IncidentRead])
+async def list_incidents(
+    severity: str | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
+    detection_source: str | None = Query(default=None),
+    root_trace_id: UUID | None = Query(default=None),
+    suspected_cause_category: str | None = Query(default=None),
+    root_cause_confidence: str | None = Query(default=None),
+    session: AsyncSession = SESSION_DEP,
+    actor: ActorContext = ACTOR_DEP,
+) -> LimitOffsetPage[IncidentRead]:
+    """List incident summaries for operational diagnosis."""
+    await _evidence_role_for_actor(session, actor)
+    statement = select(Incident).order_by(desc(col(Incident.created_at)))
+    if severity:
+        statement = statement.where(Incident.severity == severity)
+    if status_filter:
+        statement = statement.where(Incident.status == status_filter)
+    if detection_source:
+        statement = statement.where(Incident.detection_source == detection_source)
+    if root_trace_id is not None:
+        statement = statement.where(Incident.root_trace_id == root_trace_id)
+    if suspected_cause_category:
+        statement = statement.where(Incident.suspected_cause_category == suspected_cause_category)
+    if root_cause_confidence:
+        statement = statement.where(Incident.root_cause_confidence == root_cause_confidence)
+
+    def _transform(items: Sequence[Any]) -> Sequence[Any]:
+        return [IncidentRead.model_validate(item, from_attributes=True) for item in items]
+
+    return await paginate(session, statement, transformer=_transform)
+
+
+@router.get("/incidents/{incident_id}", response_model=IncidentDetailRead)
+async def get_incident_detail(
+    incident_id: UUID,
+    session: AsyncSession = SESSION_DEP,
+    actor: ActorContext = ACTOR_DEP,
+) -> IncidentDetailRead:
+    """Return an incident with trace/action context and filtered evidence."""
+    role = await _evidence_role_for_actor(session, actor)
+    incident = await session.get(Incident, incident_id)
+    if incident is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    root_trace = (
+        await session.get(Trace, incident.root_trace_id)
+        if incident.root_trace_id is not None
+        else None
+    )
+    related_actions: list[Action] = []
+    targets = [("incident", incident.id)]
+    if root_trace is not None:
+        related_actions = list(
+            (
+                await session.exec(
+                    select(Action)
+                    .where(Action.trace_id == root_trace.id)
+                    .order_by(asc(col(Action.created_at)))
+                )
+            ).all()
+        )
+        targets.append(("trace", root_trace.id))
+        targets.extend(("action", item.id) for item in related_actions)
+    evidence = await _list_evidence_for_targets(session, role=role, targets=targets)
+    return IncidentDetailRead(
+        incident=IncidentRead.model_validate(incident, from_attributes=True),
+        root_trace=(
+            TraceRead.model_validate(root_trace, from_attributes=True)
+            if root_trace is not None
+            else None
+        ),
+        related_actions=[
+            ActionRead.model_validate(item, from_attributes=True) for item in related_actions
+        ],
+        evidence=[EvidenceRead.model_validate(item, from_attributes=True) for item in evidence],
+    )
+
+
+@router.get("/audit", response_model=DefaultLimitOffsetPage[AuditRecordRead])
+async def list_audit_records(
+    action: str | None = Query(default=None),
+    actor_type: str | None = Query(default=None),
+    actor_id: str | None = Query(default=None),
+    target_type: str | None = Query(default=None),
+    target_id: str | None = Query(default=None),
+    trace_id: UUID | None = Query(default=None),
+    session: AsyncSession = SESSION_DEP,
+    actor: ActorContext = ACTOR_DEP,
+) -> LimitOffsetPage[AuditRecordRead]:
+    """List privileged audit records for operational review."""
+    await _require_audit_read_role(session, actor)
+    statement = select(AuditRecord).order_by(desc(col(AuditRecord.created_at)))
+    if action:
+        statement = statement.where(AuditRecord.action == action)
+    if actor_type:
+        statement = statement.where(AuditRecord.actor_type == actor_type)
+    if actor_id:
+        statement = statement.where(AuditRecord.actor_id == actor_id)
+    if target_type:
+        statement = statement.where(AuditRecord.target_type == target_type)
+    if target_id:
+        statement = statement.where(AuditRecord.target_id == target_id)
+    if trace_id is not None:
+        statement = statement.where(AuditRecord.trace_id == trace_id)
+
+    def _transform(items: Sequence[Any]) -> Sequence[Any]:
+        return [AuditRecordRead.model_validate(item, from_attributes=True) for item in items]
+
+    return await paginate(session, statement, transformer=_transform)
+
+
+@router.get("/audit/{audit_id}", response_model=AuditRecordRead)
+async def get_audit_record(
+    audit_id: UUID,
+    session: AsyncSession = SESSION_DEP,
+    actor: ActorContext = ACTOR_DEP,
+) -> AuditRecordRead:
+    """Return one privileged audit record."""
+    await _require_audit_read_role(session, actor)
+    audit = await session.get(AuditRecord, audit_id)
+    if audit is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return AuditRecordRead.model_validate(audit, from_attributes=True)
 
 
 @router.get(

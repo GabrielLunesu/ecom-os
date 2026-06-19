@@ -12,10 +12,12 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.session import async_session_maker
+from app.jobs.leased import claim_jobs, complete_job, fail_job
 from app.models.agents import Agent
 from app.models.board_webhook_payloads import BoardWebhookPayload
 from app.models.board_webhooks import BoardWebhook
 from app.models.boards import Board
+from app.models.events import DurableJob
 from app.services.openclaw.gateway_dispatch import GatewayDispatchService
 from app.services.queue import QueuedTask
 from app.services.webhooks.queue import (
@@ -25,6 +27,11 @@ from app.services.webhooks.queue import (
 )
 
 logger = get_logger(__name__)
+BOARD_WEBHOOK_DURABLE_JOB_TYPE = "board_webhook.payload.received"
+
+
+class DurableWebhookJobPayloadError(ValueError):
+    """Raised when a durable webhook job payload is malformed."""
 
 
 def _build_payload_preview(payload_value: object) -> str:
@@ -174,6 +181,118 @@ async def _process_single_item(item: QueuedInboundDelivery) -> None:
         await session.commit()
 
 
+def _uuid_from_job_payload(job: DurableJob, key: str) -> UUID:
+    raw = job.payload.get(key)
+    if not isinstance(raw, str):
+        msg = f"durable webhook job missing payload.{key}"
+        raise DurableWebhookJobPayloadError(msg)
+    try:
+        return UUID(raw)
+    except ValueError as exc:
+        msg = f"durable webhook job has invalid payload.{key}"
+        raise DurableWebhookJobPayloadError(msg) from exc
+
+
+async def process_durable_webhook_job(
+    session: AsyncSession,
+    job: DurableJob,
+    *,
+    worker_id: str,
+) -> bool:
+    """Dispatch one leased durable board-webhook job.
+
+    Returns True when the job was completed successfully. Permanent stale/malformed
+    jobs are moved to dead-letter and return False; transient notification failures
+    enter retry/dead-letter according to the job attempt cap.
+    """
+
+    if job.job_type != BOARD_WEBHOOK_DURABLE_JOB_TYPE:
+        msg = f"unsupported durable webhook job_type={job.job_type!r}"
+        raise ValueError(msg)
+
+    try:
+        payload_id = _uuid_from_job_payload(job, "payload_id")
+        webhook_id = _uuid_from_job_payload(job, "webhook_id")
+        board_id = _uuid_from_job_payload(job, "board_id")
+    except DurableWebhookJobPayloadError as exc:
+        await fail_job(
+            session,
+            job,
+            worker_id=worker_id,
+            error_code="webhook_job_payload_invalid",
+            error=str(exc),
+            retryable=False,
+        )
+        return False
+
+    loaded = await _load_webhook_payload(
+        session=session,
+        payload_id=payload_id,
+        webhook_id=webhook_id,
+        board_id=board_id,
+    )
+    if loaded is None:
+        await fail_job(
+            session,
+            job,
+            worker_id=worker_id,
+            error_code="webhook_payload_unavailable",
+            error="durable webhook payload target could not be loaded",
+            retryable=False,
+        )
+        return False
+
+    board, webhook, payload = loaded
+    try:
+        await _notify_target_agent(session=session, board=board, webhook=webhook, payload=payload)
+    except Exception as exc:
+        delay = int(_compute_webhook_retry_delay(job.attempts))
+        await fail_job(
+            session,
+            job,
+            worker_id=worker_id,
+            error_code="webhook_dispatch_failed",
+            error=str(exc),
+            retryable=True,
+            retry_delay_seconds=delay,
+        )
+        return False
+
+    await complete_job(session, job, worker_id=worker_id)
+    return True
+
+
+async def flush_durable_webhook_jobs(
+    *,
+    worker_id: str = "webhook-durable-worker",
+    limit: int = 10,
+    lease_seconds: int = 60,
+) -> int:
+    """Claim and dispatch a batch of durable board-webhook jobs."""
+
+    processed = 0
+    async with async_session_maker() as session:
+        jobs = await claim_jobs(
+            session,
+            worker_id=worker_id,
+            job_type=BOARD_WEBHOOK_DURABLE_JOB_TYPE,
+            limit=limit,
+            lease_seconds=lease_seconds,
+        )
+        await session.commit()
+
+        for job in jobs:
+            ok = await process_durable_webhook_job(
+                session,
+                job,
+                worker_id=worker_id,
+            )
+            await session.commit()
+            if ok:
+                processed += 1
+    return processed
+
+
 def _compute_webhook_retry_delay(attempts: int) -> float:
     base = float(settings.rq_dispatch_retry_base_seconds) * (2 ** max(0, attempts))
     return float(min(base, float(settings.rq_dispatch_retry_max_seconds)))
@@ -181,7 +300,10 @@ def _compute_webhook_retry_delay(attempts: int) -> float:
 
 def _compute_webhook_retry_jitter(base_delay: float) -> float:
     upper_bound = float(
-        min(float(settings.rq_dispatch_retry_max_seconds) / 10.0, float(base_delay) * 0.1)
+        min(
+            float(settings.rq_dispatch_retry_max_seconds) / 10.0,
+            float(base_delay) * 0.1,
+        )
     )
     return float(random.uniform(0.0, upper_bound))
 

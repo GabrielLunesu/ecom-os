@@ -66,7 +66,11 @@ class InAppCSRuntime(AgentRuntime):
             ticket,
             "order_lookup",
             f"order {order.get('name') if order else order_ref or 'unknown'}",
-            {"order_ref": order_ref, "found": bool(order), "fulfillment_status": (order or {}).get("fulfillment_status")},
+            {
+                "order_ref": order_ref,
+                "found": bool(order),
+                "fulfillment_status": (order or {}).get("fulfillment_status"),
+            },
         )
 
         # 3b. Cite the shipping policy from the vault + resolve the tracking page.
@@ -140,9 +144,7 @@ class InAppCSRuntime(AgentRuntime):
     async def _evidence(
         self, session: AsyncSession, ticket: Ticket, kind: str, summary: str, data: dict[str, Any]
     ) -> None:
-        session.add(
-            TicketEvidence(ticket_id=ticket.id, kind=kind, summary=summary, data=data)
-        )
+        session.add(TicketEvidence(ticket_id=ticket.id, kind=kind, summary=summary, data=data))
         await session.commit()
 
 

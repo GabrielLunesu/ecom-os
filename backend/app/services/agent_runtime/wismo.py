@@ -65,9 +65,7 @@ def compose_wismo_reply(
     ref = order.get("name") if order else (f"#{order_ref}" if order_ref else "your order")
     lines = [f"Hi {name},", ""]
     if order:
-        lines.append(
-            f"Thanks for reaching out about {ref}. {_fulfillment_phrase(order)}"
-        )
+        lines.append(f"Thanks for reaching out about {ref}. {_fulfillment_phrase(order)}")
     else:
         lines.append(
             f"Thanks for reaching out about {ref}. I couldn't locate that order "

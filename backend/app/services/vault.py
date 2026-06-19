@@ -71,9 +71,7 @@ async def list_documents(session: AsyncSession) -> list[VaultDocument]:
 
 
 async def get_document(session: AsyncSession, slug: str) -> VaultDocument | None:
-    return (
-        await session.exec(select(VaultDocument).where(VaultDocument.slug == slug))
-    ).first()
+    return (await session.exec(select(VaultDocument).where(VaultDocument.slug == slug))).first()
 
 
 async def upsert_document(

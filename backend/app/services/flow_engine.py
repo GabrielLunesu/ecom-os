@@ -43,8 +43,21 @@ logger = get_logger(__name__)
 MAX_DISCOUNT = 100.0
 _ORDER_RE = re.compile(r"#?\s*(\d{3,})")
 _ACCEPT = (
-    "yes", "yeah", "yep", "ok", "okay", "sure", "keep", "deal", "sounds good",
-    "apply", "accept", "i'll keep", "ill keep", "fine", "great",
+    "yes",
+    "yeah",
+    "yep",
+    "ok",
+    "okay",
+    "sure",
+    "keep",
+    "deal",
+    "sounds good",
+    "apply",
+    "accept",
+    "i'll keep",
+    "ill keep",
+    "fine",
+    "great",
 )
 # Statuses a flow never resumes from (sticky escalation / closed).
 _FROZEN = ("needs_rep", "resolved")
@@ -68,11 +81,7 @@ def _render(template: str, vars_: dict[str, Any]) -> str:
 def classify_flow(flows: list[Flow], subject: str, body: str) -> Flow | None:
     """Pick the first enabled flow whose trigger keywords match (by position)."""
     text = f"{subject}\n{body}".lower()
-    matches = [
-        f
-        for f in flows
-        if f.enabled and any(t.lower() in text for t in (f.triggers or []))
-    ]
+    matches = [f for f in flows if f.enabled and any(t.lower() in text for t in (f.triggers or []))]
     matches.sort(key=lambda f: f.position)
     return matches[0] if matches else None
 
@@ -117,7 +126,11 @@ class FlowEngine:
         if self.profile_tracking_url:
             return self.profile_tracking_url
         if self.public_url:
-            base = self.public_url if self.public_url.startswith("http") else f"https://{self.public_url}"
+            base = (
+                self.public_url
+                if self.public_url.startswith("http")
+                else f"https://{self.public_url}"
+            )
             return f"{base.rstrip('/')}/account"
         m = re.search(r"https?://[^\s)]+", policy_body or "")
         return m.group(0) if m else f"https://{self.store_domain}/account"
@@ -160,7 +173,11 @@ class FlowEngine:
             i = int(outcome.reason) if outcome.reason.lstrip("-").isdigit() else i + 1
 
         return await self._persist_and_finish(
-            session, ticket, data, max(min(i, len(steps) - 1), 0), FlowOutcome("resolve", "flow complete")
+            session,
+            ticket,
+            data,
+            max(min(i, len(steps) - 1), 0),
+            FlowOutcome("resolve", "flow complete"),
         )
 
     # --- goto resolution -----------------------------------------------------
@@ -227,20 +244,33 @@ class FlowEngine:
         branches = step.get("branches")
         if step.get("type") == "message" and branches:
             labels = [str(b.get("label", "")) for b in branches]
-            idx = await cs_llm.classify_reply(branches=labels, reply=body, context=self._context(data))
+            idx = await cs_llm.classify_reply(
+                branches=labels, reply=body, context=self._context(data)
+            )
             # On classify failure (-1) take the LAST (safest) branch.
             chosen = branches[idx] if 0 <= idx < len(branches) else branches[-1]
             path = list(data.get("branch_path") or [])
             path.append({"step_id": step.get("id", ""), "branch_label": chosen.get("label", "")})
             data["branch_path"] = path
             await self._evidence(
-                session, ticket, "branch", str(chosen.get("label", "")),
+                session,
+                ticket,
+                "branch",
+                str(chosen.get("label", "")),
                 {"step_id": step.get("id", ""), "classified_index": idx},
             )
             return self._resolve_goto(str(chosen.get("goto", "next")), i, ids)
         if step.get("type") == "offer_discount":
             if _looks_like_acceptance(body):
-                await self._send(session, ticket, step.get("accept_message", "Great — your discount is applied. Thanks for staying with us!"), data)
+                await self._send(
+                    session,
+                    ticket,
+                    step.get(
+                        "accept_message",
+                        "Great — your discount is applied. Thanks for staying with us!",
+                    ),
+                    data,
+                )
                 return FlowOutcome("resolve", "customer accepted the offer")
             return FlowOutcome("continue", str(i + 1))  # customer declined; advance
         return FlowOutcome("continue", str(i + 1))
@@ -295,7 +325,9 @@ class FlowEngine:
         data["order_total"] = float((order or {}).get("total_price") or 0)
         data["order_status"] = (order or {}).get("fulfillment_status") or "unfulfilled"
         data["fulfillment_phrase"] = _fulfillment_phrase(order)
-        await self._evidence(session, ticket, "order_lookup", data["order_name"], {"found": bool(order)})
+        await self._evidence(
+            session, ticket, "order_lookup", data["order_name"], {"found": bool(order)}
+        )
         return FlowOutcome("continue")
 
     async def _step_cite_policy(
@@ -307,11 +339,18 @@ class FlowEngine:
         data["policy_excerpt"] = text[:320] + ("…" if len(text) > 320 else "")
         data["tracking_url"] = self._resolve_tracking_url(doc.body if doc else "")
         await self._evidence(session, ticket, "policy_cite", slug, {"slug": slug})
-        await self._evidence(session, ticket, "tracking", data["tracking_url"], {"url": data["tracking_url"]})
+        await self._evidence(
+            session, ticket, "tracking", data["tracking_url"], {"url": data["tracking_url"]}
+        )
         return FlowOutcome("continue")
 
     async def _step_send_reply(
-        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any], body: str
+        self,
+        session: AsyncSession,
+        ticket: Ticket,
+        step: dict[str, Any],
+        data: dict[str, Any],
+        body: str,
     ) -> FlowOutcome:
         if step.get("prompt"):
             await self._send_llm(session, ticket, step, data, body)
@@ -320,18 +359,33 @@ class FlowEngine:
         return FlowOutcome("continue")
 
     async def _step_offer_discount(
-        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any], body: str
+        self,
+        session: AsyncSession,
+        ticket: Ticket,
+        step: dict[str, Any],
+        data: dict[str, Any],
+        body: str,
     ) -> FlowOutcome:
         pct = await self._issue_discount(session, ticket, float(step.get("percent", 10)), data)
         if step.get("prompt"):
             await self._send_llm(session, ticket, step, data, body)
         else:
-            await self._send(session, ticket, step.get("message", "Here's {discount_percent}% off: {discount_code}"), data)
+            await self._send(
+                session,
+                ticket,
+                step.get("message", "Here's {discount_percent}% off: {discount_code}"),
+                data,
+            )
         _ = pct
         return FlowOutcome("wait", "awaiting customer decision on discount")
 
     async def _step_request_refund(
-        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any], body: str
+        self,
+        session: AsyncSession,
+        ticket: Ticket,
+        step: dict[str, Any],
+        data: dict[str, Any],
+        body: str,
     ) -> FlowOutcome:
         # FILE a refund into the approval lane — NEVER execute one (Invariant 2).
         from app.services.refunds import create_refund_request
@@ -349,11 +403,25 @@ class FlowEngine:
                 requested_by="cs-flow",
                 ticket_id=ticket.id,
             )
-        await self._evidence(session, ticket, "refund_filed", str(data.get("order_name", "")), {"approval_lane": True})
+        await self._evidence(
+            session,
+            ticket,
+            "refund_filed",
+            str(data.get("order_name", "")),
+            {"approval_lane": True},
+        )
         if step.get("prompt"):
             await self._send_llm(session, ticket, step, data, body)
         else:
-            await self._send(session, ticket, step.get("message", "I've sent your refund to our team for approval; we'll be in touch shortly."), data)
+            await self._send(
+                session,
+                ticket,
+                step.get(
+                    "message",
+                    "I've sent your refund to our team for approval; we'll be in touch shortly.",
+                ),
+                data,
+            )
         # Hand to a human to approve the refund (sticky escalation).
         return FlowOutcome("escalate", "refund filed; awaiting human approval")
 
@@ -365,12 +433,16 @@ class FlowEngine:
         pct = min(percent, MAX_DISCOUNT)
         code = f"SAVE{int(pct)}-{str(ticket.id)[:6].upper()}"
         try:
-            await self.shopify.create_discount(title=f"CS offer {int(pct)}%", percentage=pct, code=code)
+            await self.shopify.create_discount(
+                title=f"CS offer {int(pct)}%", percentage=pct, code=code
+            )
         except Exception:  # noqa: BLE001
             logger.warning("discount creation failed; offering code anyway")
         data["discount_code"] = code
         data["discount_percent"] = int(pct)
-        await self._evidence(session, ticket, "discount_offer", f"{int(pct)}% {code}", {"percent": pct})
+        await self._evidence(
+            session, ticket, "discount_offer", f"{int(pct)}% {code}", {"percent": pct}
+        )
         return pct
 
     def _context(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -388,7 +460,12 @@ class FlowEngine:
         }
 
     async def _send_llm(
-        self, session: AsyncSession, ticket: Ticket, step: dict[str, Any], data: dict[str, Any], body: str
+        self,
+        session: AsyncSession,
+        ticket: Ticket,
+        step: dict[str, Any],
+        data: dict[str, Any],
+        body: str,
     ) -> None:
         """Generate the email via the LLM; fall back to template render on failure."""
         first_name = (ticket.customer_name or "there").split(" ")[0]
@@ -436,23 +513,44 @@ class FlowEngine:
             in_reply_to=ticket.inbound_message_external_id or None,
         )
         session.add(
-            TicketMessage(ticket_id=ticket.id, direction="outbound", author="cs-flow", body=body, untrusted=False, created_at=utcnow())
+            TicketMessage(
+                ticket_id=ticket.id,
+                direction="outbound",
+                author="cs-flow",
+                body=body,
+                untrusted=False,
+                created_at=utcnow(),
+            )
         )
         await session.commit()
 
     async def _evidence(
-        self, session: AsyncSession, ticket: Ticket, kind: str, summary: str, payload: dict[str, Any]
+        self,
+        session: AsyncSession,
+        ticket: Ticket,
+        kind: str,
+        summary: str,
+        payload: dict[str, Any],
     ) -> None:
         session.add(TicketEvidence(ticket_id=ticket.id, kind=kind, summary=summary, data=payload))
         await session.commit()
 
     async def _escalate(self, session: AsyncSession, ticket: Ticket, reason: str) -> FlowOutcome:
         return await self._persist_and_finish(
-            session, ticket, dict(ticket.flow_data or {}), ticket.flow_step, FlowOutcome("escalate", reason)
+            session,
+            ticket,
+            dict(ticket.flow_data or {}),
+            ticket.flow_step,
+            FlowOutcome("escalate", reason),
         )
 
     async def _persist_and_finish(
-        self, session: AsyncSession, ticket: Ticket, data: dict[str, Any], step_index: int, outcome: FlowOutcome
+        self,
+        session: AsyncSession,
+        ticket: Ticket,
+        data: dict[str, Any],
+        step_index: int,
+        outcome: FlowOutcome,
     ) -> FlowOutcome:
         ticket.flow_step = step_index
         ticket.flow_data = data
@@ -465,7 +563,12 @@ class FlowEngine:
         ticket.updated_at = utcnow()
         session.add(ticket)
         session.add(
-            TicketAudit(ticket_id=ticket.id, action=f"flow_{outcome.kind}", actor="cs-flow", detail=outcome.reason)
+            TicketAudit(
+                ticket_id=ticket.id,
+                action=f"flow_{outcome.kind}",
+                actor="cs-flow",
+                detail=outcome.reason,
+            )
         )
         await session.commit()
         return outcome

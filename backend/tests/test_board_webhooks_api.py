@@ -21,6 +21,7 @@ from app.models.board_memory import BoardMemory
 from app.models.board_webhook_payloads import BoardWebhookPayload
 from app.models.board_webhooks import BoardWebhook
 from app.models.boards import Board
+from app.models.events import DurableInboxEvent, DurableJob
 from app.models.gateways import Gateway
 from app.models.organizations import Organization
 from app.services.webhooks.queue import QueuedInboundDelivery
@@ -211,12 +212,121 @@ async def test_ingest_board_webhook_stores_payload_and_enqueues_for_lead_dispatc
             assert f"payload:{payload_id}" in memory_items[0].tags
             assert f"Payload ID: {payload_id}" in memory_items[0].content
 
+            durable_events = (
+                await session.exec(
+                    select(DurableInboxEvent).where(
+                        col(DurableInboxEvent.source) == "board_webhook",
+                    ),
+                )
+            ).all()
+            assert len(durable_events) == 1
+            assert durable_events[0].event_type == "board_webhook.payload.received"
+            assert durable_events[0].source_scope == f"board:{board.id}:webhook:{webhook.id}"
+            assert durable_events[0].data["payload_id"] == str(payload_id)
+
+            durable_jobs = (
+                await session.exec(
+                    select(DurableJob).where(
+                        col(DurableJob.job_type) == "board_webhook.payload.received",
+                    ),
+                )
+            ).all()
+            assert len(durable_jobs) == 1
+            assert durable_jobs[0].deduplication_key == (
+                f"durable_inbox_event:{durable_events[0].id}"
+            )
+            assert durable_jobs[0].payload["payload_id"] == str(payload_id)
+
         assert len(enqueued) == 1
         assert enqueued[0]["board_id"] == str(board.id)
         assert enqueued[0]["webhook_id"] == str(webhook.id)
         assert enqueued[0]["payload_id"] == str(payload_id)
 
         assert len(sent_messages) == 0
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_ingest_board_webhook_duplicate_source_event_reuses_durable_job(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = await _make_engine()
+    session_maker = async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    app = _build_test_app(session_maker)
+    enqueued: list[UUID] = []
+
+    async with session_maker() as session:
+        board, webhook = await _seed_webhook(session, enabled=True)
+
+    def _fake_enqueue(payload: QueuedInboundDelivery) -> bool:
+        enqueued.append(payload.payload_id)
+        return True
+
+    monkeypatch.setattr(
+        board_webhooks,
+        "enqueue_webhook_delivery",
+        _fake_enqueue,
+    )
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://testserver",
+        ) as client:
+            first = await client.post(
+                f"/api/v1/boards/{board.id}/webhooks/{webhook.id}",
+                json={"event": "deploy", "attempt": 1},
+                headers={"X-Event-Id": "provider-event-1"},
+            )
+            second = await client.post(
+                f"/api/v1/boards/{board.id}/webhooks/{webhook.id}",
+                json={"event": "deploy", "attempt": 2},
+                headers={"X-Event-Id": "provider-event-1"},
+            )
+
+        assert first.status_code == 202
+        assert second.status_code == 202
+        first_payload_id = UUID(first.json()["payload_id"])
+        second_payload_id = UUID(second.json()["payload_id"])
+        assert first_payload_id != second_payload_id
+
+        async with session_maker() as session:
+            stored_payloads = (
+                await session.exec(
+                    select(BoardWebhookPayload).where(
+                        col(BoardWebhookPayload.board_id) == board.id
+                    ),
+                )
+            ).all()
+            assert len(stored_payloads) == 2
+
+            durable_events = (
+                await session.exec(
+                    select(DurableInboxEvent).where(
+                        col(DurableInboxEvent.source_event_id) == "x-event-id:provider-event-1",
+                    ),
+                )
+            ).all()
+            assert len(durable_events) == 1
+            assert durable_events[0].data["payload_id"] == str(first_payload_id)
+
+            durable_jobs = (
+                await session.exec(
+                    select(DurableJob).where(
+                        col(DurableJob.deduplication_key)
+                        == f"durable_inbox_event:{durable_events[0].id}",
+                    ),
+                )
+            ).all()
+            assert len(durable_jobs) == 1
+            assert durable_jobs[0].payload["payload_id"] == str(first_payload_id)
+
+        assert enqueued == [first_payload_id]
     finally:
         await engine.dispose()
 
