@@ -23,7 +23,7 @@ Engineering impact:
 - Adds durable board-webhook worker ports that process leased
   `board_webhook.payload.received` jobs through the existing notification behavior and
   persist success, retry, stale-target dead-letter, and attempt-cap dead-letter states.
-- Adds `webhook_dispatch_worker_mode` with `legacy`, `durable`, and `dual` modes so
+- Adds `WEBHOOK_DISPATCH_WORKER_MODE` with `legacy`, `durable`, and `dual` modes so
   operators can run Postgres durable webhook dispatch beside Redis/RQ and roll back to
   Redis/RQ-only behavior without code changes.
 - Adds `scripts/check_postgres_migration_upgrade.py` for disposable PostgreSQL

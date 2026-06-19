@@ -15,7 +15,7 @@ from app.services.queue import QueuedTask
 async def test_queue_worker_legacy_mode_uses_redis_only(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(queue_worker.settings, "webhook_dispatch_worker_mode", "legacy")
+    monkeypatch.setenv("WEBHOOK_DISPATCH_WORKER_MODE", "legacy")
     monkeypatch.setattr(queue_worker.settings, "rq_dispatch_throttle_seconds", 0)
 
     durable_calls: list[bool] = []
@@ -61,7 +61,7 @@ async def test_queue_worker_legacy_mode_uses_redis_only(
 async def test_queue_worker_durable_mode_skips_redis(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(queue_worker.settings, "webhook_dispatch_worker_mode", "durable")
+    monkeypatch.setenv("WEBHOOK_DISPATCH_WORKER_MODE", "durable")
     monkeypatch.setattr(queue_worker.settings, "rq_dispatch_throttle_seconds", 0)
 
     durable_calls: list[bool] = []
@@ -88,7 +88,7 @@ async def test_queue_worker_durable_mode_skips_redis(
 async def test_queue_worker_dual_mode_processes_durable_then_legacy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(queue_worker.settings, "webhook_dispatch_worker_mode", "dual")
+    monkeypatch.setenv("WEBHOOK_DISPATCH_WORKER_MODE", "dual")
     monkeypatch.setattr(queue_worker.settings, "rq_dispatch_throttle_seconds", 0)
 
     calls: list[str] = []
@@ -135,7 +135,7 @@ async def test_queue_worker_dual_mode_processes_durable_then_legacy(
 async def test_queue_worker_invalid_mode_falls_back_to_legacy(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(queue_worker.settings, "webhook_dispatch_worker_mode", "bad-mode")
+    monkeypatch.setenv("WEBHOOK_DISPATCH_WORKER_MODE", "bad-mode")
     monkeypatch.setattr(queue_worker.settings, "rq_dispatch_throttle_seconds", 0)
 
     durable_calls: list[bool] = []
@@ -161,7 +161,7 @@ async def test_queue_worker_invalid_mode_falls_back_to_legacy(
 async def test_queue_worker_durable_mode_idles_when_blocking_without_jobs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(queue_worker.settings, "webhook_dispatch_worker_mode", "durable")
+    monkeypatch.setenv("WEBHOOK_DISPATCH_WORKER_MODE", "durable")
 
     sleeps: list[float] = []
 

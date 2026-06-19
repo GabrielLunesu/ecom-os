@@ -29,7 +29,7 @@ their ports are ready.
   `flush_durable_webhook_jobs`; it shares the existing notification behavior while
   recording durable success, retry, stale-target dead-letter, and attempt-cap dead-letter
   states.
-- `webhook_dispatch_worker_mode` controls worker rollout:
+- `WEBHOOK_DISPATCH_WORKER_MODE` controls worker rollout:
   - `legacy`: Redis/RQ only, default rollback mode.
   - `durable`: Postgres leased board-webhook jobs only.
   - `dual`: durable jobs first, then Redis/RQ compatibility tasks.

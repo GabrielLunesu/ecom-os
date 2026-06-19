@@ -12,7 +12,7 @@ flowchart LR
   BoardWebhook[Board webhook API] --> PayloadTable[board_webhook_payloads]
   PayloadTable --> DurableInbox
   DurableInbox --> DurableJob
-  WorkerMode[webhook_dispatch_worker_mode legacy/durable/dual] --> DurableWorker[durable webhook worker]
+  WorkerMode[WEBHOOK_DISPATCH_WORKER_MODE legacy/durable/dual] --> DurableWorker[durable webhook worker]
   WorkerMode --> RedisQueue
   DurableJob --> DurableWorker
   DurableJob --> RedisQueue[compat Redis/RQ enqueue when new]

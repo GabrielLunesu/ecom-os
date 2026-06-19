@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import random
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -59,11 +60,12 @@ def _compute_jitter(base_delay: float) -> float:
 
 
 def _webhook_worker_mode() -> str:
-    mode = settings.webhook_dispatch_worker_mode.strip().lower()
+    raw_mode = os.environ.get("WEBHOOK_DISPATCH_WORKER_MODE", "legacy")
+    mode = raw_mode.strip().lower()
     if mode not in _WEBHOOK_WORKER_MODES:
         logger.warning(
             "queue.worker.invalid_webhook_dispatch_mode",
-            extra={"mode": settings.webhook_dispatch_worker_mode},
+            extra={"mode": raw_mode},
         )
         return "legacy"
     return mode

@@ -102,7 +102,6 @@ class Settings(BaseSettings):
     rq_dispatch_max_retries: int = 3
     rq_dispatch_retry_base_seconds: float = 10.0
     rq_dispatch_retry_max_seconds: float = 120.0
-    webhook_dispatch_worker_mode: str = "legacy"
 
     # OpenClaw gateway runtime compatibility
     gateway_min_version: str = "2026.02.9"

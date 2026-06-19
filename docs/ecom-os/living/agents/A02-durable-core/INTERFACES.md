@@ -9,7 +9,7 @@
 | LeasedJobQueue | v0 proposed | `backend/app/jobs/` | A03/A04/A05/A07/A08/A09 | Jobs are claimed with leases, heartbeat extends ownership, expiry permits reclaim, bounded retry creates visible dead letters. |
 | Board webhook durable ingress | v0 compatibility | `backend/app/api/board_webhooks.py` | A03/A06/A09 | Ingest persists payload, memory, inbox event, and durable job transactionally before HTTP 202; legacy Redis enqueue runs only for a newly created durable job. |
 | Board webhook durable worker | v0 compatibility | `backend/app/services/webhooks/dispatch.py`, `backend/app/services/webhooks/__init__.py` | A03/A09 | `process_durable_webhook_job` and `flush_durable_webhook_jobs` process leased `board_webhook.payload.received` jobs using the existing notification behavior, then complete, retry, or dead-letter the durable job. |
-| Webhook worker migration mode | v0 compatibility | `backend/app/core/config.py`, `backend/app/services/queue_worker.py` | A09/operators | `legacy` drains only Redis/RQ, `durable` drains only Postgres leased webhook jobs, `dual` drains durable first then Redis/RQ; invalid values fall back to `legacy`. |
+| Webhook worker migration mode | v0 compatibility | `backend/app/services/queue_worker.py` | A09/operators | `WEBHOOK_DISPATCH_WORKER_MODE=legacy` drains only Redis/RQ, `durable` drains only Postgres leased webhook jobs, `dual` drains durable first then Redis/RQ; invalid values fall back to `legacy`. |
 | PostgreSQL migration verifier | v0 evidence | `backend/scripts/check_postgres_migration_upgrade.py` | A00/A09/CI | Requires an empty disposable PostgreSQL database URL; refuses non-empty databases, upgrades to Alembic head, and verifies durable-core tables. |
 | TraceRecorder | v0 proposed | `backend/app/traces/` | all | Missing observer data lowers coverage; Ecom-OS-controlled records are `verified`; logs are never treated as traces. |
 | ToolInvocationRecorder | v0 proposed | `backend/app/traces/` | A03/A05/A07/A08 | Write-capable tools create an invocation before domain execution; schema/version mismatch fails before side effects; secret-bearing argument/result keys are rejected before storage. |
@@ -57,7 +57,7 @@
 
 ## Queue migration modes
 
-| `webhook_dispatch_worker_mode` | Behavior | Rollout use |
+| `WEBHOOK_DISPATCH_WORKER_MODE` | Behavior | Rollout use |
 |---|---|---|
 | `legacy` | `queue_worker.flush_queue` skips durable jobs and drains Redis/RQ only. | Default and rollback mode while Redis/RQ compatibility remains in place. |
 | `durable` | `queue_worker.flush_queue` claims `board_webhook.payload.received` durable jobs only and idles without Redis polling when empty. | Postgres-only trial mode before A09 removes Redis. |
