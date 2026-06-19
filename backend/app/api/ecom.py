@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import require_user_auth
+from app.api.operator_workspace import router as operator_workspace_router
 from app.db.session import get_session
 from app.services.connection_health import connections_status
 from app.services.metrics import store_metrics
@@ -34,6 +35,7 @@ from app.services.vault import (
 )
 
 router = APIRouter(prefix="/ecom", tags=["ecom"], dependencies=[Depends(require_user_auth)])
+router.include_router(operator_workspace_router)
 
 
 class ProviderHealthOut(BaseModel):

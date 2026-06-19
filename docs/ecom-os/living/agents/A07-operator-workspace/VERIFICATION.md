@@ -2,16 +2,36 @@
 
 ## Latest verified commit
 
-`SET_ME`
+`3909904 + uncommitted A07 backend/frontend workspace slice; final pushed SHA reported after commit`
 
 ## Required checks
 
 | Check | Command/fixture | Result | Evidence |
 |---|---|---|---|
-| Static/type checks | pending | not run | — |
-| Unit/contract tests | pending | not run | — |
-| Integration/E2E | pending | not run | — |
-| Migration/rollback | pending | not run | — |
-| Security/invariant checks | pending | not run | — |
+| Normative read/inventory | Manual read of root `AGENTS.md`, all `docs/ecom-os/specs/`, all `docs/ecom-os/parallel-build/`, programme living docs, all agents' `CURRENT.md`/`INTERFACES.md`, A07 handoff, A07 living docs, and A07-adjacent source/tests/migrations | completed | Current update cites concrete paths and commit `3909904`. |
+| Branch/worktree | `pwd`; `git branch --show-current`; `git status --short` | completed | Worktree `/Users/gabriellunesu/Git/ecom-os-worktrees/a07-chat`, branch `agent/a07-chat`. |
+| Backend dependency sync | `cd backend && uv sync --extra dev` | passed | Installed backend dev dependencies before tests. |
+| Unit/contract tests | `cd backend && uv run pytest tests/test_operator_workspace.py` | passed | 12 tests passed: provenance, task comments/links, task access filtering, brief task input filtering, document access filtering, HTML active-content extraction filtering, unsupported extraction state, supersession, attention ranking, attention snapshot replay, safe launch intent, tool manifest metadata. |
+| Migration graph | `cd backend && uv run python scripts/check_migration_graph.py` | passed | Single head `a07_20260619_operator_workspace`, 35 reachable revisions. |
+| Targeted lint | `cd backend && uv run flake8 --config .flake8 app/models/operator_workspace.py app/schemas/operator_workspace.py app/services/operator_workspace.py app/api/operator_workspace.py app/api/ecom.py tests/test_operator_workspace.py` | passed | No flake8 output. |
+| Targeted format | `cd backend && uv run isort app/models/__init__.py app/models/operator_workspace.py app/api/operator_workspace.py app/api/ecom.py app/schemas/operator_workspace.py app/services/operator_workspace.py tests/test_operator_workspace.py && uv run black app/models/__init__.py app/models/operator_workspace.py app/api/operator_workspace.py app/api/ecom.py app/schemas/operator_workspace.py app/services/operator_workspace.py tests/test_operator_workspace.py` | passed | A07-touched backend files formatted; isort fixed imports in A07 model/API/test exports and black left 7 files unchanged. |
+| Compile smoke | `cd backend && uv run python -m compileall app/models/operator_workspace.py app/schemas/operator_workspace.py app/services/operator_workspace.py app/api/operator_workspace.py` | passed | No compile errors. |
+| App route smoke | `cd backend && AUTH_MODE=local LOCAL_AUTH_TOKEN=<50 chars> BASE_URL=http://localhost:8000 uv run python - <<'PY' ...` | passed | App imports and reports 15 `/api/v1/ecom/operator-workspace/*` routes, including `/brief/task-inputs`, `/tool-manifest`, and `/attention/snapshots`. A prior run with a short token correctly failed config validation. |
+| Frontend dependency sync | `bash scripts/with_node.sh --cwd frontend npm install` | passed | Installed frontend dependencies locally; `node_modules` ignored. |
+| Frontend unit tests | `cd frontend && npx vitest run src/lib/ecom-operator-workspace.test.ts --coverage.enabled=false` | passed | 13 tests passed for Today source composition/unavailable behavior/source refs, persisted snapshot creation, frontend safe launch-intent request shape, explicit Knowledge role-test request/filtered response handling, frontend role-scoped task requests, task create access/brief payload fields, role-scoped task update payload fields including assignee, Knowledge upsert source/type/effective-date metadata, role-scoped Knowledge document version fetches, Today source-link mapping, Today trace-link mapping, and item-level unavailable dependency/freshness helpers. |
+| Frontend targeted lint | `cd frontend && npm run lint -- 'src/app/(ecom)/overview/page.tsx' 'src/app/(ecom)/tasks/page.tsx' 'src/app/(ecom)/knowledge/page.tsx' src/lib/ecom-api.ts src/lib/ecom-operator-workspace.test.ts` | passed | No ESLint output. |
+| Frontend targeted format | `cd frontend && npx prettier --check 'src/app/(ecom)/overview/page.tsx' 'src/app/(ecom)/tasks/page.tsx' 'src/app/(ecom)/knowledge/page.tsx' src/lib/ecom-api.ts src/lib/ecom-operator-workspace.test.ts` | passed | A07-touched frontend files match Prettier. |
+| Diff hygiene | `git diff --check` | passed | No whitespace errors. |
+| Frontend typecheck | `cd frontend && npx tsc --noEmit --pretty false` | passed | Project-wide TypeScript completed with no diagnostics. |
+| Full backend format check | `make backend-format-check` | failed outside A07 scope | isort reported existing import-order issues in `backend/app/main.py`, `backend/app/services/tickets.py` (A05), `backend/app/services/metrics.py` (A08), `backend/tests/test_ticket_ingestion.py`, plus A07 files that were subsequently fixed with targeted isort/black. Other-owner files were not edited. |
+| Full frontend format check | `bash scripts/with_node.sh --cwd frontend npx prettier --check 'src/**/*.{ts,tsx,js,jsx,json,css,md}' '*.{ts,js,json,md,mdx}'` | failed outside A07 scope | Prettier reported 25 pre-existing non-A07 files including A06/global shell and unrelated routes. A07-touched files pass targeted Prettier. |
+| Full backend typecheck | `cd backend && uv run mypy` | skipped/interrupted by user instruction | Command was running with no diagnostics when interrupted; stale A07 mypy process was terminated. |
+| Full frontend lint | `cd frontend && npm run lint` | skipped/interrupted by user instruction | Command was running with no diagnostics when interrupted; targeted A07 eslint passed. |
+| Frontend build | `timeout 300 bash scripts/with_node.sh --cwd frontend npm run build` | passed | Next compiled, typechecked, generated 35 static pages, and listed `/overview`, `/tasks`, and `/knowledge`. One Recharts width/height warning appeared during static generation outside the A07 touched pages. |
+| Frontend dev server | `tmux new-session -d -s ecom-a07-frontend ...`; `curl -L --max-time 30 ... /overview /tasks /knowledge` | passed | Dev server is running in tmux on `http://localhost:3000`; `/overview`, `/tasks`, and `/knowledge` returned HTTP 200 HTML. |
+| Integration/E2E | pending | not run | Requires accepted A01/A02/A03/A05/A06/A08 contracts and frontend route work. |
+| Migration upgrade/downgrade on Postgres | `make backend-migration-check` | skipped by user instruction | Not run in the final push turn after the user requested skipping the remaining gates. Migration graph had previously passed and the A07 revision is rooted at `a0b1c2d3e4f5`. |
+| Branch readiness script | `python scripts/ci/branch_readiness.py agent/a07-chat` | unavailable | `scripts/ci/branch_readiness.py` is not present in this worktree; only `scripts/ci/one_migration_per_pr.sh` exists under `scripts/ci/`. |
+| Security/invariant checks | partial | passed locally | Role-filter-before-task-return/comment/brief-task-count, role-scoped frontend task fetches, role-filter-before-search/count/snippet/body, HTML script/style non-indexing, unsupported extraction unavailable-not-searchable, replayed attention retains unavailable-not-zero evidence, safe Ask Hermes launch, no sensitive tool-manifest fields, and agent provenance covered by unit tests. |
 
 Replace stale results. Include exact failures; do not write “all good” without evidence.
