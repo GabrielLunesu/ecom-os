@@ -2,7 +2,7 @@
 owner: A07
 branch: agent/a07-chat
 status: ready_for_integration
-last_verified_commit: 0342569
+last_verified_commit: ea1ce1a
 ---
 
 # A07 — Today, Tasks, Knowledge, and Operator Workspace — Current State
@@ -19,7 +19,7 @@ Build the operator attention surface, tasks, document vault/search, contextual e
 
 ## Current implementation
 
-Verified at `0342569` in
+Verified at pushed ready commit `ea1ce1a` in
 `/Users/gabriellunesu/Git/ecom-os-worktrees/a07-chat`.
 
 The current implementation is useful prototype input, not yet the v2 A07 contract.

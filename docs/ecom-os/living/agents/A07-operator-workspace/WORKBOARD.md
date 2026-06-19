@@ -2,7 +2,7 @@
 
 ## Implemented and verified
 
-- Discovery inventory is complete at `3909904`.
+- Discovery inventory is complete; current pushed ready commit is `ea1ce1a`.
 - A07 backend workspace slice is implemented and locally verified:
   - `OperatorTask` with assignee/due/priority/status/entity links/comments/access labels/provenance.
   - Server-side task role filtering for list/get/update/comment paths using local access labels.

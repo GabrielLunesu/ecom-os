@@ -2,13 +2,13 @@
 
 ## Latest verified commit
 
-`0342569`
+`ea1ce1a`
 
 ## Required checks
 
 | Check | Command/fixture | Result | Evidence |
 |---|---|---|---|
-| Normative read/inventory | Manual read of root `AGENTS.md`, all `docs/ecom-os/specs/`, all `docs/ecom-os/parallel-build/`, programme living docs, all agents' `CURRENT.md`/`INTERFACES.md`, A07 handoff, A07 living docs, and A07-adjacent source/tests/migrations | completed | Current update cites concrete paths and commit `3909904`. |
+| Normative read/inventory | Manual read of root `AGENTS.md`, all `docs/ecom-os/specs/`, all `docs/ecom-os/parallel-build/`, programme living docs, all agents' `CURRENT.md`/`INTERFACES.md`, A07 handoff, A07 living docs, and A07-adjacent source/tests/migrations | completed | Current A07 living docs describe pushed ready commit `ea1ce1a`; initial inventory was performed from baseline `3909904`. |
 | Branch/worktree | `pwd`; `git branch --show-current`; `git status --short` | completed | Worktree `/Users/gabriellunesu/Git/ecom-os-worktrees/a07-chat`, branch `agent/a07-chat`. |
 | Backend dependency sync | `cd backend && uv sync --extra dev` | passed | Installed backend dev dependencies before tests. |
 | Unit/contract tests | `cd backend && uv run pytest tests/test_operator_workspace.py` | passed | 12 tests passed: provenance, task comments/links, task access filtering, brief task input filtering, document access filtering, HTML active-content extraction filtering, unsupported extraction state, supersession, attention ranking, attention snapshot replay, safe launch intent, tool manifest metadata. |
@@ -30,7 +30,7 @@
 | Frontend build | `timeout 300 bash scripts/with_node.sh --cwd frontend npm run build` | passed | Next compiled, typechecked, generated 35 static pages, and listed `/overview`, `/tasks`, and `/knowledge`. One Recharts width/height warning appeared during static generation outside the A07 touched pages. |
 | Frontend dev server | `tmux new-session -d -s ecom-a07-frontend ...`; `curl -L --max-time 30 ... /overview /tasks /knowledge` | passed | Dev server is running in tmux on `http://localhost:3000`; `/overview`, `/tasks`, and `/knowledge` returned HTTP 200 HTML. |
 | Integration/E2E | pending | not run | Requires accepted A01/A02/A03/A05/A06/A08 contracts and frontend route work. |
-| Migration upgrade/downgrade on Postgres | `make backend-migration-check` | skipped by user instruction | Not run in the final push turn after the user requested skipping the remaining gates. Migration graph had previously passed and the A07 revision is rooted at `a0b1c2d3e4f5`. |
+| Migration upgrade/downgrade on Postgres | `make backend-migration-check` | environment failed | Migration graph portion passed with single head `a07_20260619_operator_workspace` and 35 reachable revisions, then the Postgres upgrade/downgrade fixture failed with `docker: command not found` in this environment. |
 | Branch readiness script | `python scripts/ci/branch_readiness.py agent/a07-chat` | unavailable | `scripts/ci/branch_readiness.py` is not present in this worktree; only `scripts/ci/one_migration_per_pr.sh` exists under `scripts/ci/`. |
 | Security/invariant checks | partial | passed locally | Role-filter-before-task-return/comment/brief-task-count, role-scoped frontend task fetches, role-filter-before-search/count/snippet/body, HTML script/style non-indexing, unsupported extraction unavailable-not-searchable, replayed attention retains unavailable-not-zero evidence, safe Ask Hermes launch, no sensitive tool-manifest fields, and agent provenance covered by unit tests. |
 
