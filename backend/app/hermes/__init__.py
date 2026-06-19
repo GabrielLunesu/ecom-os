@@ -27,7 +27,19 @@ from .channels import (
     SchedulePort,
 )
 from .conformance import ConformanceReport, run_conformance_suite
+from .health import hermes_health_snapshot
+from .native import (
+    HermesNativeConfig,
+    HermesNativeNotConfigured,
+    HermesNativeNotImplemented,
+    HermesNativeTransport,
+)
 from .runs import BackgroundRunPort, RunLeaseError
+
+# NOTE: OpenClawCompatTransport is intentionally NOT re-exported here. It is a dev/compat
+# transport that imports the legacy OpenClaw stack (and runtime settings); importing it
+# eagerly would couple the whole hermes package to that config. Import it directly from
+# ``app.hermes.openclaw_compat`` where needed.
 from .types import (
     BackgroundRunRequest,
     CreateSession,
@@ -71,6 +83,11 @@ __all__ = [
     "SchedulePort",
     "ConformanceReport",
     "run_conformance_suite",
+    "hermes_health_snapshot",
+    "HermesNativeConfig",
+    "HermesNativeNotConfigured",
+    "HermesNativeNotImplemented",
+    "HermesNativeTransport",
     "BackgroundRunPort",
     "RunLeaseError",
 ]

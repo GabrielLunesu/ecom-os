@@ -116,9 +116,10 @@ on the real Hermes-session transport using A06 primitives and the proven SSE pat
 ## Implemented v2 (committed at `5f971a7`)
 
 All pure-Python, no DB migration, fixture-driven (Operating Protocol §7); ruff + mypy clean;
-57 new tests pass. Real-Hermes transport, A01 WS identity, and A02 ingest are the remaining
-seams to swap the fakes for (IR-A03-01/02, DR-A03-01); until a release is pinned, every
-feature is gated `not_ready` (I-19).
+77 new tests pass. Per the owner decision on DR-A03-01, OpenClaw is a dev/compat transport
+only and `HermesNativeTransport` is the real-Hermes seam. Real-Hermes conformance is BLOCKED
+(A03-R02); A01 WS identity and A02 ingest are the remaining seams to swap fakes for
+(IR-A03-01/02). Until a release is pinned, every feature is gated `not_ready` (I-19).
 
 - **`backend/app/tools/`** — canonical tool catalog (`catalog.py`: `ToolDefinition` with all
   §6.1 metadata + `schema_hash`; `ToolCatalog` + `compatibility_hash`; seeded read tools
@@ -152,8 +153,25 @@ feature is gated `not_ready` (I-19).
   failed-check → feature `not_ready` (§15.6); actionable failures for `/agents`/System health.
   Tests `tests/test_hermes_conformance.py`.
 
-These supersede the `/delegate` spike as the architecture; the live `mcp_server/server.py`
-and CS runtime still run on the pre-v2 path and migrate onto the catalog/bridge in later slices.
+- **Transport boundary (DR-A03-01 resolved):** `hermes/native.py` `HermesNativeTransport` is
+  the real pinned-Hermes seam — an honest **blocked stub** (reports blocked health, refuses
+  ops) until a real Hermes v0.16.0 endpoint is provided; it must never be satisfied by OpenClaw.
+  `hermes/openclaw_compat.py` `OpenClawCompatTransport` adapts the in-repo OpenClaw WS gateway
+  (`sessions.patch`/`chat.history`/`chat.send`/`chat.abort`) to the bridge **for local dev
+  only**, clearly labeled "NOT real Hermes" with degraded (non-streaming) `submit_prompt` and
+  unsupported background/branch. Tests `tests/test_hermes_native_health.py`,
+  `tests/test_openclaw_compat.py`.
+- **`hermes/health.py`** — `hermes_health_snapshot` assembles the compatibility/conformance/
+  readiness view for `/system` + `/agents`, reporting `conformance_blocked` on fixtures and the
+  native stub (real conformance BLOCKED, never faked). A09 mounts the route (IR pending).
+- **`mcp_server/catalog_server.py`** — `build_catalog_server`/`build_catalog_handlers` generate
+  a real MCP server from the catalog with per-call validation. The live `mcp_server/server.py`
+  (A05-owned CS tool names) is unchanged; it migrates once A05 registers its tools into the
+  catalog (registration contract). Tests `tests/test_catalog_mcp_server.py`.
+
+These supersede the `/delegate` spike as the architecture. **Real-Hermes conformance is BLOCKED
+(A03-R02)** pending a pinned endpoint; the bridge runs on fixtures (and optionally OpenClaw
+compat) until then.
 
 ## Target architecture
 

@@ -36,7 +36,13 @@ async def run_conformance(bridge: HermesBridge) -> ConformanceResult:
     """
     checks: list[tuple[str, bool]] = []
 
-    ref = await bridge.create_session(CreateSession(profile_id=_PROBE_PROFILE))
+    try:
+        ref = await bridge.create_session(CreateSession(profile_id=_PROBE_PROFILE))
+    except Exception:  # noqa: BLE001 - a transport that cannot create a session fails honestly
+        # Record the failure rather than crashing; an unconfigured/blocked transport (e.g.
+        # the native stub) reports not-passed conformance, never a fabricated pass.
+        checks.append(("session_create", False))
+        return ConformanceResult(passed=False, checks=tuple(checks))
     checks.append(("session_create", bool(ref.session_id)))
 
     seqs: list[int] = []

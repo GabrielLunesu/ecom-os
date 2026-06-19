@@ -23,8 +23,14 @@ Each item is independently verifiable.
 - **BackgroundRunPort** — `hermes/runs.py` (durable-job + lease, poll-never-infer). `test_hermes_runs.py` (7).
 - **Channel/cron delivery contracts** — `hermes/channels.py` (idempotent delivery, identity mapping, schedule). `test_hermes_channels.py` (6).
 - **Conformance suite + readiness gate** — `hermes/conformance.py`. `test_hermes_conformance.py` (6).
+- **Transport boundary** — `hermes/native.py` (`HermesNativeTransport`, real-Hermes blocked stub),
+  `hermes/openclaw_compat.py` (`OpenClawCompatTransport`, dev/compat over OpenClaw, NOT Hermes),
+  `hermes/health.py` (system-health/capability snapshot). `test_hermes_native_health.py` (7),
+  `test_openclaw_compat.py` (9).
+- **Catalog→MCP generation** — `mcp_server/catalog_server.py` (`build_catalog_server`).
+  `test_catalog_mcp_server.py` (4).
 - Pre-v2 audit complete (see `CURRENT.md`); baseline 76 A03-relevant tests pass at `3909904`.
-  Total A03 v2 tests: **57** (ruff + mypy clean).
+  Total A03 v2 tests: **77** (ruff + mypy clean).
 
 ## Now (current-state model — this checkpoint)
 
@@ -71,23 +77,32 @@ Ordered, each behind typed ports + fakes + conformance fixtures (no real Hermes 
    failure → feature `not_ready` (§15.6); failures listed actionably for `/agents`/System
    health. `test_hermes_conformance.py` (6).
 
-## Then — Slice 3 (Hermes bridge and main chat UI)
+8. [x] **Transport boundary + system-health (DR-A03-01 owner decision)** —
+   `HermesNativeTransport` (real-Hermes blocked stub), `OpenClawCompatTransport` (dev/compat,
+   NOT Hermes), `hermes_health_snapshot`, catalog→MCP `build_catalog_server`.
 
-- Capability/conformance UI in `/agents`; backend-managed TUI Gateway connection; `/chat`
-  session list/create/resume/history; streamed messages/tool events; interrupt/reconnect;
-  trace-per-turn; structured Ecom-OS tool-result cards; A06 primitives; browser receives no
-  Hermes service credential.
+## Then — Slice 3 (Hermes bridge and main chat UI) — partly BLOCKED on real Hermes
+
+- **Buildable now:** wire `HermesNativeTransport` real protocol once an endpoint exists; expose
+  the health/capability snapshot via an A09-registered `/system` route (IR pending);
+  `OpenClawCompatTransport` enables `/chat` dev against a local gateway.
+- **Blocked (A03-R02):** real canonical resumed session, streamed tool events, reconnect, and
+  conformance against a pinned Hermes — needs a real Hermes v0.16.0 endpoint/credentials/install.
+- **Blocked on peers:** `/chat` + `/agents` UI needs A06 primitives (not_started) and the real
+  bridge transport; trace-per-turn needs A02 ingest (IR-A03-01); WS auth needs A01 (IR-A03-02).
 
 ## Then — Slice 11 (channel transport)
 
 - Channel identity/destination + cron/delivery transport contracts for A08 (A08 owns brief
-  content/numbers); real conformance delivery message.
+  content/numbers) — contracts done in `channels.py`; real Hermes messaging/cron transport pending.
 
 ## Blocked
 
-- None hard-blocked. A03-R01 resolution and A02/A01 contracts are needed before marking
-  features `ready`, but Slice 0 proceeds on typed ports + fakes + fixtures (Operating
-  Protocol §7).
+- **A03-R02 (hard):** real-Hermes conformance + the seven end-to-end acceptance scenarios are
+  BLOCKED pending a pinned Hermes v0.16.0 endpoint/credentials/install. The fixture + compat
+  transports keep all other work moving; every feature stays `not_ready` until a real probe.
+- A02 trace ingest (IR-A03-01) and A01 WS identity (IR-A03-02) needed to replace local
+  ports/fakes; A06 primitives needed for `/chat`/`/agents` UI. Non-blocking via fakes meanwhile.
 
 ## Exit condition
 

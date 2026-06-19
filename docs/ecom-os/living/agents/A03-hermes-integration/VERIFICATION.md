@@ -15,7 +15,11 @@
 | New: BackgroundRunPort (idempotent + poll-not-infer) | `uv run python -m pytest tests/test_hermes_runs.py -q` | **7 passed** | this checkpoint |
 | New: channel/cron delivery contracts | `uv run python -m pytest tests/test_hermes_channels.py -q` | **6 passed** | this checkpoint |
 | New: conformance suite + readiness gate | `uv run python -m pytest tests/test_hermes_conformance.py -q` | **6 passed** | this checkpoint |
-| All A03 v2 modules together | `uv run python -m pytest tests/test_tool_catalog.py tests/test_tool_invoker.py tests/test_hermes_*.py -q` | **57 passed**, 3.7s | this checkpoint |
+| New: transport boundary + health | `uv run python -m pytest tests/test_hermes_native_health.py -q` | **7 passed** | this checkpoint |
+| New: OpenClaw compat transport | `uv run python -m pytest tests/test_openclaw_compat.py -q` | **9 passed** | this checkpoint |
+| New: catalog→MCP generation | `uv run python -m pytest tests/test_catalog_mcp_server.py -q` | **4 passed** | this checkpoint |
+| All A03 v2 modules together | `uv run python -m pytest tests/test_tool_catalog.py tests/test_tool_invoker.py tests/test_catalog_mcp_server.py tests/test_hermes_*.py tests/test_openclaw_compat.py -q` | **77 passed**, 2.0s | this checkpoint |
+| Regression (live MCP + gateway + CS) | `uv run python -m pytest tests/test_mcp_server.py tests/test_gateway_rpc_connect_scopes.py tests/test_gateway_version_compat.py tests/test_cs_runtime.py -q` | **52 passed** | this checkpoint |
 | A03 baseline + new (regression) | `uv run python -m pytest tests/test_tool_catalog.py tests/test_hermes_bridge.py tests/test_tool_invoker.py tests/test_mcp_server.py tests/test_cs_runtime.py tests/test_cs_llm.py tests/test_gateway_*.py tests/test_session_keys.py -q` | **109 passed** baseline run; +5 invoker = **38 new** A03 v2 tests green | this checkpoint |
 | Full backend suite | `uv run python -m pytest -q` (backgrounded) | exit 0 (slow integration tests near end; foreground hits 500s wall-clock) | this checkpoint |
 | Static/type checks (new modules) | `uv run mypy app/tools app/hermes` | **Success: no issues** (10 files) | this checkpoint |

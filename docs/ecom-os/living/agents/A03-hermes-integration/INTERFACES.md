@@ -8,7 +8,9 @@ interface is `live` yet — gated on a pinned Hermes (I-19).
 
 | Interface | Version/status | Canonical schema/code | Consumers | Failure semantics |
 |---|---|---|---|---|
-| `HermesBridge` | v0 `port` | `backend/app/hermes/bridge.py` (§2.2) + `fake.py` | A05, A07, A08 | Missing mandatory capability flag → feature `not_ready`; transport loss → reconnect/poll, never infer completion |
+| `HermesBridge` | v0 `port` | `backend/app/hermes/bridge.py` (§2.2); transports `fake.py`, `native.py` (real, **blocked stub**), `openclaw_compat.py` (dev/compat, NOT Hermes) | A05, A07, A08 | Missing mandatory capability flag → feature `not_ready`; native transport BLOCKED until real endpoint (A03-R02); transport loss → reconnect/poll, never infer completion |
+| Hermes system-health snapshot | v0 `port` | `backend/app/hermes/health.py` `hermes_health_snapshot` | A09 (`/system`), A03 (`/agents`) | `conformance_blocked: true` on fixtures/native stub; real conformance never faked |
+| Catalog→MCP server generator | v1 `port` | `backend/app/mcp_server/catalog_server.py` | Hermes MCP config; A05 registers CS tool defs | Handler outside catalog rejected; per-call arg validation before dispatch |
 | `BackgroundRunPort` | v0 `port` | `backend/app/hermes/runs.py` (+ `RunStore`/`LeasePort`) | A05 (ticket runs), A08 (brief narration) | Idempotent per `ecom_job_id`; lease-loss polls `get_run` before any new attempt; HTTP timeout ≠ failure → reconcile, no duplicate |
 | `ChannelDeliveryPort` + `SchedulePort` | v0 `port` | `backend/app/hermes/channels.py` | A08 (brief/alert delivery) | Idempotent per brief/date/channel (repeat → `duplicate`); failure visible+retryable; unmapped channel user → no privileged identity (I-09) |
 | Conformance suite + readiness gate | v0 `port` | `backend/app/hermes/conformance.py` | A09 (System health), A03 `/agents` | Required-check failure / missing mandatory flag / fixture → feature `not_ready` (§15.6) |
