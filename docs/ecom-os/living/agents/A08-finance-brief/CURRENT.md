@@ -2,7 +2,7 @@
 owner: A08
 branch: agent/a08-ops-briefs
 status: integration_blocked
-last_verified_commit: pending-current-commit
+last_verified_commit: 175aaf0
 ---
 
 # A08 — Finance, Metric Evidence, and Daily Brief — Current State

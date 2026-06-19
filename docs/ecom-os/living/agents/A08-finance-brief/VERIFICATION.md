@@ -2,7 +2,7 @@
 
 ## Latest verified commit
 
-`pending-current-commit`
+`175aaf0`
 
 ## Required checks
 
