@@ -2,7 +2,8 @@
 
 ## Latest verified commit
 
-`64ca874` (branch `agent/a01-foundation`)
+`4b214ee` (branch `agent/a01-foundation`). History was rewritten once to fragment
+fake-secret test fixtures (GitHub push-protection false positive); behavior unchanged.
 
 ## Integration gates (A01-owned files)
 
@@ -29,9 +30,10 @@ Notes / environment limits:
 - `scripts/ci/branch_readiness.py` is not present in this branch (A00/A09 tooling not yet
   merged); its constituent gates above are run directly.
 
-## Original commit reference
+## Commit reference
 
-`f92adbb` was the feature-complete commit; `64ca874` adds isort/black normalization.
+`b070fe9` is the secret-redaction slice; `5f01a7f` adds isort/black normalization;
+`4b214ee` is the branch tip. (SHAs are post-rewrite.)
 
 ## Environment
 
