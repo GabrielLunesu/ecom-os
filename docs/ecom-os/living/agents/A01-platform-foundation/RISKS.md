@@ -1,18 +1,19 @@
 # A01 — Platform Foundation and Identity — Current Risks and Edge Cases
 
+Resolved during the foundation build (durable behaviour + tests in place), kept here
+only as a pointer until integration: R01 owner-bootstrap closure, R04 typed errors, R05
+health, R07 service-token O(1) lookup — see VERIFICATION.md.
+
 | ID | Risk/edge case | Impact | Current mitigation/test | Owner | Status |
 |---|---|---|---|---|---|
-| A01-R01 | No explicit owner bootstrap; `ensure_member_for_user` (`app/services/organizations.py:276`) auto-makes every new user `owner` of an auto-created org | Anyone authenticating becomes owner; bootstrap never closes (violates `05-OPS` §3.1, Build Spec Slice 1) | Planned slice 4: single-owner gate that closes + host-only reopen; replay test | A01 | open |
-| A01-R02 | Money stored as `float` (`app/models/refunds.py:32`) | Rounding/precision errors in money path (violates AGENTS I-16) | Planned `Money` type (int minor units + ISO); migrate refund amount; no-float unit test | A01 | open |
-| A01-R03 | Timestamps are **naive** UTC (`app/core/time.py`) | Ambiguous tz at boundaries; spec wants UTC storage + tz-aware | Reshape to tz-aware UTC helpers; round-trip test; migrate cautiously (compat) | A01 | open |
-| A01-R04 | No runtime typed-error envelope; handler emits `{detail,request_id}`; `code/retryable` only in opt-in docs | Inconsistent client error handling; missing normative codes | Planned `Error` envelope + 15-code enum (§10); ≥1 endpoint emits it; tests | A01 | open |
-| A01-R05 | Health endpoints return `{ok:true}` with no checks (`app/main.py:498-549`) | False "ready"; can't distinguish liveness/readiness/degraded (violates `05-OPS` §11.1) | Planned multi-dimension `/health`; DB/migration/queue probes | A01 | open |
-| A01-R06 | A02 audit/trace sink not available; identity/config changes must be audited | Cannot record required audit on day 1 | A01-owned no-op `AuditTraceSink` port + test fake; swap when A02 ships; interface request filed | A01/A02 | open |
-| A01-R07 | Service-identity (agent) token lookup is O(n) full scan (`app/core/agent_auth.py:51`) | Latency/DoS surface as identities grow | Indexed lookup (key id prefix → row) when reshaping service identities | A01 | open |
-| A01-R08 | IDs are `uuid4`, not UUIDv7 (all models) | Non-sortable IDs (AGENTS §6 "globally unique sortable") | New tables use UUIDv7; existing tables retained (no big-bang); document deviation | A01 | open |
-| A01-R09 | Repo layout conflict: AGENTS.md §10 (`backend/{api,domain,application,infrastructure}`, `packages/contracts`) vs `03-ENGINEERING.md` §2 (`backend/app/{...}`, `hermes-integration/`) vs actual `backend/app/{...}` | Wrong early move breaks the working prototype | No rename until resolved; decision request to A00/human; AGENTS.md wins by precedence | A01/A00 | open |
-| A01-R10 | `Gateway.token` stored unencrypted (`app/models/gateways.py:25`) | Plaintext secret in DB (violates AGENTS I-15) | Route through Fernet `secret_store`/handle; secret-detection corpus in CI | A01 | open |
-| A01-R11 | On-disk branch `agent/a01-foundation` ≠ docs branch `agent/A01-platform-foundation` | Integration/tooling that keys on branch name may mismatch | Stay on current branch per launch instruction; note for A09 integration | A01/A09 | open |
-| A01-R12 | Heavy openclaw/board-orchestration baggage (`services/openclaw/`, gateways, boards, souls) | Scope confusion; dead weight; package still named `openclaw-agency-backend` | Wall off, do not strip in discovery; mark canonical/facade/deprecated as verticals migrate | A01 | open |
+| A01-R02 | Prototype money stored as `float` (`app/models/refunds.py:32`) | Precision errors in money path (I-16) | Canonical `Money` type shipped (`app/core/money.py`); refund column not yet migrated — do it via A08's vertical, not a mass migration | A01/A08 | open (type ready, retrofit deferred) |
+| A01-R03 | Prototype timestamps are naive UTC (`app/core/time.py:utcnow`) | Ambiguous tz at boundaries | tz-aware helpers added (`now_utc`/`ensure_utc`/`to_timezone`); existing columns intentionally unchanged | A01 | open (helpers ready, retrofit deferred) |
+| A01-R06 | A02 audit/trace sink not available | Identity/config audit not durably stored yet | No-op `AuditTraceSink` port logs events honestly (coverage=observed); swap when A02 ships; interface request to file | A01/A02 | open (port in place) |
+| A01-R08 | New tables use UUIDv7 but prototype tables remain `uuid4` | Mixed ID schemes | Documented deliberate choice (no big-bang); new identity tables sortable | A01 | accepted |
+| A01-R09 | Repo-layout conflict: AGENTS.md §10 vs `03-ENGINEERING.md` §2 vs actual `backend/app/{...}` | Wrong early move breaks prototype | No rename done; added `app/auth/` + `app/core/` behind seams; decision request to A00/human still open | A01/A00 | open |
+| A01-R10 | `Gateway.token` stored unencrypted (`app/models/gateways.py:25`) | Plaintext secret in DB (I-15) | A03-owned (Hermes gateway); not edited by A01 — filed as interface request to route through secret store; redaction corpus catches log/response leaks meanwhile | A03 | open (handed off) |
+| A01-R11 | On-disk branch `agent/a01-foundation` ≠ docs branch `agent/A01-platform-foundation` | Branch-name-keyed tooling may mismatch | Stay on current branch per launch instruction; flagged for A09 | A01/A09 | open |
+| A01-R12 | Heavy openclaw/board-orchestration baggage (`services/openclaw/`, boards, gateways) | Scope confusion; package still named `openclaw-agency-backend` | Walled off, not stripped; A01 added beside it behind seams | A01 | accepted (defer cleanup) |
+| A01-R13 | Concurrent owner-bootstrap claims race | Two owners if exactly simultaneous | `SELECT ... FOR UPDATE` on the singleton on Postgres serializes; sqlite no-op (tests single-threaded). Hardens further with a DB constraint if needed | A01 | open (low, mitigated on PG) |
 
-Delete resolved rows after the durable behaviour/test/documentation is in place.
+Delete resolved rows after integration confirms the durable behaviour/test/docs.

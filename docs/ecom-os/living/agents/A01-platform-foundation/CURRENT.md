@@ -1,8 +1,8 @@
 ---
 owner: A01
 branch: agent/a01-foundation
-status: discovery
-last_verified_commit: 3909904580732c27a9c6821ef44487c706d6a180
+status: ready_for_integration
+last_verified_commit: f92adbb
 ---
 
 # A01 — Platform Foundation and Identity — Current State
@@ -42,10 +42,32 @@ in AGENTS.md §10. The AGENTS.md §10 vs `03-ENGINEERING.md` §2 layout conflict
 a decision request (see RISKS A01-R09); A01 will not force a rename — it adds `app/auth/`
 and consolidates shared primitives into `app/core/` behind stable seams.
 
-## Current implementation (audited at 3909904)
+## Implemented by A01 (at f92adbb)
+
+Eight tested vertical slices on top of the audited prototype. All A01 code passes
+`ruff`, `mypy --strict` (211 files), and its unit/integration suites (see VERIFICATION).
+
+| # | Capability | Code | Tests |
+|---|---|---|---|
+| 1 | Common types: UUIDv7, Money(minor units+ISO, no float), tz-aware time | `app/core/ids.py`, `money.py`, `time.py` | `tests/test_foundation_types.py` |
+| 1 | Typed error envelope + 15 normative codes; `ApiError` handler | `app/core/errors.py`, `error_handling.py` | `test_foundation_types.py` |
+| 2 | RequestContext/ActorContext/StoreScope + W3C trace propagation | `app/core/context.py`, `app/auth/context.py`, `error_handling.py` | `test_request_context.py` |
+| 3 | Identity schema (roles/permissions/service+channel identities/bootstrap) + migration | `app/models/identity.py`, `migrations/versions/a01_0001_identity_foundation.py` | `test_identity_migration.py` |
+| 4 | Owner bootstrap that closes; role seeding; audit-sink port; `/identity/*` | `app/auth/bootstrap.py`, `roles.py`, `actor.py`, `audit.py`, `app/api/identity.py` | `test_owner_bootstrap.py` |
+| 5 | Service & channel identity verification; role enforcement; fixtures | `app/auth/service_identity.py`, `channel_identity.py`, `fixtures.py`, `service_tokens.py` | `test_identity_enforcement.py` |
+| 6 | Health primitives + multi-dimension readiness (`/readyz`, `/readyz/details`) | `app/core/health.py`, `app/main.py` | `test_health_primitives.py` |
+| 7 | Route-registration convention; regenerated strict TS client | `app/api/registry.py`, `frontend/src/api/generated/**` | `test_contract_and_registry.py` |
+| 8 | Secret redaction at log + error boundaries; detection corpus | `app/core/redaction.py`, `logging.py`, `error_handling.py` | `test_secret_redaction.py` |
+
+Consumed-port: A02 audit/trace sink via `app/auth/audit.py` (no-op default + in-memory
+fake) until A02 ships. Local auth remains the explicit dev/self-hosted mode.
+
+## Prototype baseline (audited at 3909904)
 
 Status legend: **[reuse]** keep as-is · **[facade]** keep the seam, reshape behind it ·
 **[build]** absent, A01 must create · **[liability]** present but violates a v2 invariant.
+Items marked [build]/[liability] below that A01 has since resolved are noted in the
+"Implemented by A01" table above; the rest remain as the prototype's current state.
 
 ### Identity & auth
 - **[facade]** Auth seam: `app/core/auth.py` (`get_auth_context`, `AuthContext`) and

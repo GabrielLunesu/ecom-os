@@ -1,6 +1,9 @@
 # A01 — Platform Foundation and Identity — Diagrams
 
-## Current (audited at 3909904)
+> As of `f92adbb` the "Target" below is implemented (see CURRENT.md "Implemented by
+> A01"). The "Prototype baseline" diagram is retained to show what A01 layered onto.
+
+## Prototype baseline (audited at 3909904)
 
 ```mermaid
 flowchart LR

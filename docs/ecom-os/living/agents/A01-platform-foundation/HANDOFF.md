@@ -2,47 +2,52 @@
 
 ## Safe continuation point
 
-Commit `3909904` on branch `agent/a01-foundation`. Discovery + audit complete; living docs
-are current truth; no A01 code changes made yet. Status: `discovery`. Next action is the
-WORKBOARD "Next" slice 1 (common types + typed errors), with interface requests filed first.
+Commit `f92adbb` on branch `agent/a01-foundation`. Eight tested foundation slices are
+implemented and committed; full suite green (628 passed, 1 xfailed); ruff + mypy clean
+(211 files). Status: `verification` → ready to mark `ready_for_integration` after the
+interface requests are filed. No prototype behaviour was removed; everything is additive
+behind stable seams.
 
-## What is working (inherited prototype, audited)
+## What is working (A01-delivered)
 
-- Auth seam (`app/core/auth.py`, `app/api/deps.py`) every router depends on.
-- Clerk + local-static-token auth modes; agent (service) token auth with PBKDF2 hashing.
-- Alembic at single head `a0b1c2d3e4f5`; startup auto-migrate.
-- OpenAPI → orval → generated typed React-Query client.
-- Fernet secret store (handle-addressed); structured logging; request-id middleware;
-  `{detail,request_id}` error handler; rate limiting; security headers.
-- ~90 backend pytest files (incl. auth/identity/security).
+- Common types: `app/core/{ids,money,time}.py`; typed errors `app/core/errors.py` +
+  handler.
+- Request/actor/store/trace context `app/core/context.py` + W3C propagation middleware.
+- Identity schema + migration `a01_0001_identity_foundation` (single head).
+- Owner bootstrap that closes (`app/auth/bootstrap.py`, `app/api/identity.py`); role
+  seeding; service & channel identity verification; enforcement deps; fixtures.
+- Health primitives `/readyz` + `/readyz/details`.
+- Route registry `app/api/registry.py`; regenerated strict TS client.
+- Secret redaction at log + error boundaries + detection corpus.
+- A02 audit/trace sink port (no-op default) in `app/auth/audit.py`.
 
 ## What remains
 
-See `WORKBOARD.md` (8 ordered slices) and the six handoff acceptance items. None started.
-
-## Blockers and decisions
-
-- Soft: A02 audit sink (use A01 no-op port/fake), A06 primitives (thin wrappers).
-- Decision request: repo-layout conflict (RISKS A01-R09) — resolve before any directory move.
-- Confirm coordination-doc (00-program) edit rights with A00 before filing into the registry.
+- File interface requests (INTERFACES.md): A02 audit-sink shape, A06 identity-UI
+  primitives, A09 contract/migration workflow, A03 `Gateway.token` redaction.
+- Deferred (need a consuming vertical): retrofit prototype money/timestamps (R02/R03);
+  recent-auth step-up hook (`05-OPS` §3.2); swap no-op audit sink for A02's.
+- Resolve repo-layout decision request (R09).
 
 ## Commands to resume
 
 ```bash
 cd backend
-uv sync                       # restore locked deps
-uv run alembic upgrade head   # expect head a0b1c2d3e4f5
-uv run pytest                 # baseline suite
-uv run ruff check . && uv run mypy app
-# contract gen (needs running API on :8000):
-python scripts/export_openapi.py   # then: cd ../frontend && npm run api:gen
+uv sync --extra dev            # dev extras carry pytest (else stray system pytest runs)
+uv run alembic upgrade head    # head: a01_0001_identity
+uv run ruff check app && uv run mypy app
+uv run pytest -q               # expect 628 passed, 1 xfailed
+# contract regen:
+uv run python scripts/export_openapi.py
+cd ../frontend && npm ci && ORVAL_INPUT="$(pwd)/../backend/openapi.json" npm run api:gen
 ```
 
 ## Do not accidentally regress
 
-- The `deps.py` auth dependency seam — reshape behind it; do not break router contracts.
-- Local auth must remain an explicit, documented dev/self-hosted mode (not removed).
-- No big-bang folder rename (AGENTS.md §11; migration-map). Preserve passing tests.
-- Invariants to hold from the first line of code: server-side authorization (AGENTS §7),
-  exact identity/store binding (I-09), secrets never become ordinary data (I-15), money as
-  integer minor units (I-16), UTC storage, every mutation auditable, trace context present.
+- The `app/api/deps.py` and `app/core/auth.py` auth seams — reshape behind them.
+- Local auth stays an explicit dev/self-hosted mode (documented limits), not removed.
+- No big-bang folder rename (AGENTS §11). Additive only.
+- Invariants held from the first line: server-side authorization (§7), exact
+  identity/store binding (I-09), secrets never ordinary data (I-15), Money as integer
+  minor units (I-16), UTC storage, trace context present, owner bootstrap closes.
+- `uuid7()` for NEW tables; do not retrofit prototype `uuid4` tables casually.

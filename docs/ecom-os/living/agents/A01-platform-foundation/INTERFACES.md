@@ -1,26 +1,27 @@
 # A01 — Platform Foundation and Identity — Interfaces
 
-Status legend: `planned` (designed, not yet coded) · `implementing` · `available`
-(coded + tested on this branch). Nothing is `available` yet at 3909904.
+Status legend: `planned` · `implementing` · `available` (coded + tested at `f92adbb`).
 
 ## Exposes
 
 | Interface | Version/status | Canonical schema/code | Consumers | Failure semantics |
 |---|---|---|---|---|
-| `ActorContext` (human/service/channel; `actor_type`, `actor_id`, roles, scopes) | v0 planned | `backend/app/auth/context.py` (to create); seam = `app/core/auth.py:AuthContext` | A02–A09 | Missing/invalid auth → `unauthenticated`; resolved server-side, never from client role names |
-| `RequestContext` (`request_id`, `trace_id`, `span_id`, `parent_span_id`, actor, `store_id`, hermes ids) | v0 planned | `backend/app/core/context.py` (to create); per `03-ENGINEERING.md` §6 | A02–A09 | Absent fields stay null, never fabricated; W3C `traceparent` honoured on HTTP |
-| `StoreScope` (exact `store_id`/`brand_id` binding) | v0 planned | `backend/app/core/context.py` | A04, A05, A08 | No default/latest account (AGENTS I-09); unscoped write → `forbidden`/`validation_error` |
-| `Money` (integer minor units + ISO currency) | v0 planned | `backend/app/core/money.py` | A05, A08 | No float; mismatched currency → `validation_error` |
-| `Uuid7` id type + generator | v0 planned | `backend/app/core/ids.py` | all | Opaque to clients; provider IDs stored separately |
-| UTC datetime helpers (tz-aware) | v0 planned | `backend/app/core/time.py` (reshape `utcnow`) | all | Storage UTC; presentation tz at boundary |
-| Typed `Error` envelope + code enum (15 codes, §10) | v0 planned | `backend/app/core/errors.py` + handler | all | Stable `code`, `message`, `retryable`, `trace_id`, safe `details`, optional `remediation` |
-| Auth dependency / enforcement | v0 planned (facade exists) | `backend/app/api/deps.py` | all route owners | Server-side denial; 401/403 typed; frontend never authoritative |
-| Owner bootstrap API (closes after first owner) | v0 planned | `backend/app/api/auth.py` (reshape `/bootstrap`) | A09 (ops), owner UI | Replayed anonymously after close → `forbidden`; reopen only via host recovery |
-| Service-identity verification | v0 planned (facade `agent_auth.py`) | `backend/app/auth/service_identity.py` | A02, A03, A04 | Bad/rotated/revoked credential → `unauthenticated`; audience-scoped |
-| Channel-identity lookup | v0 planned | `backend/app/auth/channel_identity.py` | A03, A05 | Unmapped sender → no privileged identity (AGENTS I-09); role re-resolved per invocation |
-| Health primitives | v0 planned (stubs exist) | `backend/app/api/health.py` | A09, A07 (system) | Multi-dimension; degraded states explicit, never single green/red |
-| Route-registration convention | v0 planned | doc + `app/core/router_registry.py` | A02–A09 | Domains export router + request registration; A01 registers, A09 final integration |
-| Contract generation (OpenAPI→TS) | available-as-prototype | `scripts/export_openapi.py` + `frontend/orval.config.ts` → `frontend/src/api/generated` | all frontend route owners | Schema change → regenerate; breaking tool/schema change → new version, not silent edit |
+| `ActorContext` (human/service/channel; `actor_type`, `actor_id`, roles, scopes) | v1 available | `app/core/context.py`; resolver `app/auth/actor.py` | A02–A09 | Missing/invalid auth → `unauthenticated`; resolved server-side, never from client role names |
+| `RequestContext` (`request_id`, `trace_id`, `span_id`, `parent_span_id`, actor, `store_id`, hermes ids) | v1 available | `app/core/context.py`; dep `app/auth/context.py:get_request_context` | A02–A09 | Absent fields stay null, never fabricated; W3C `traceparent` honoured on HTTP |
+| `StoreScope` (exact `store_id`/`brand_id` binding) | v1 available | `app/core/context.py` | A04, A05, A08 | No default/latest account (I-09); unscoped write → `forbidden`/`validation_error` |
+| `Money` (integer minor units + ISO currency) | v1 available | `app/core/money.py` | A05, A08 | No float; mismatched currency → `CurrencyMismatchError`/`validation_error` |
+| `uuid7()` sortable id generator | v1 available | `app/core/ids.py` | all | Opaque to clients; provider IDs stored separately |
+| tz-aware UTC helpers | v1 available | `app/core/time.py:{now_utc,ensure_utc,to_timezone}` | all | Storage UTC; presentation tz at boundary; legacy `utcnow` (naive) retained |
+| Typed `ErrorEnvelope` + `ErrorCode` (15 codes) + `ApiError` | v1 available | `app/core/errors.py`; handler `app/core/error_handling.py` | all | Stable `code`/`detail`/`retryable`/`trace_id`/safe `details`/`remediation`; details redacted |
+| Permission/role enforcement deps | v1 available | `app/auth/actor.py:{require_permission,require_role,get_actor_context}` | all route owners | Server-side `forbidden`; frontend never authoritative |
+| Owner bootstrap API (closes after first owner) | v1 available | `app/auth/bootstrap.py`; `app/api/identity.py` | A09 (ops), owner UI | Anonymous → 401; non-owner after close → `forbidden`; reopen only via host `reopen_bootstrap` |
+| Service-identity verification | v1 available | `app/auth/service_identity.py` (+ `service_tokens.py`) | A02, A03, A04 | Bad/rotated/revoked token → `None`; O(1) selector lookup; audience-scoped |
+| Channel-identity lookup + actor resolution | v1 available | `app/auth/channel_identity.py` | A03, A05 | Unmapped sender → no identity (I-09); role re-resolved per invocation |
+| Health primitives + readiness report | v1 available | `app/core/health.py`; `/readyz`, `/readyz/details` | A09, A07 (system) | Multi-dimension; `down`→503; other domains' dims = `unknown` until wired |
+| Route-registration convention | v1 available | `app/api/registry.py:{DOMAIN_ROUTERS,register_domain_routers}` | A02–A09 | Domains export router + request a one-line entry; A01 registers, A09 final integration |
+| Identity fixtures | v1 available | `app/auth/fixtures.py:seed_identity_fixtures` | all (tests) | Deterministic owner/admin/viewer + service + channel + unmapped sender |
+| Contract generation (OpenAPI→TS) | v1 available | `backend/scripts/export_openapi.py` + `frontend/orval.config.ts` → `frontend/src/api/generated` | all frontend route owners | Schema change → regenerate; breaking change → new version, not silent edit |
+| `AuditTraceSink` port (A01 exposes the port; A02 implements) | v1 available (no-op) | `app/auth/audit.py:{AuditTraceSink,get_audit_sink,set_audit_sink}` | A02 (provider), A01 (caller) | Default no-op logs honestly; A02 injects durable sink |
 
 ## Consumes
 
