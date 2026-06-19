@@ -2,7 +2,7 @@
 owner: A02
 branch: agent/a02-trace-ledger
 status: ready_for_integration
-last_verified_commit: 5c78fcc
+last_verified_commit: 92fe0a9
 ---
 
 # A02 — Durable Events, Jobs, Traces, and Actions — Current State
@@ -20,7 +20,7 @@ Build the Postgres durable operational core: inbox/outbox, leased jobs, traces, 
 ## Current implementation
 
 Audited on branch `agent/a02-trace-ledger`; latest verified implementation commit is
-`5c78fcc`.
+`92fe0a9`.
 
 - Existing queue behavior is a Redis/RQ compatibility path in `backend/app/services/queue.py` and `backend/app/services/webhooks/queue.py`. It supports JSON envelopes, delayed scheduling, attempts, and legacy payload decoding. It remains in place for compatibility, but realtime email and board webhook ingress now create Postgres durable jobs before the legacy queue path is used. Board webhook delivery also has an additive durable worker path in `backend/app/services/webhooks/dispatch.py`.
 - Queue worker migration is controlled by the worker-local `WEBHOOK_DISPATCH_WORKER_MODE` environment variable in `backend/app/services/queue_worker.py`:

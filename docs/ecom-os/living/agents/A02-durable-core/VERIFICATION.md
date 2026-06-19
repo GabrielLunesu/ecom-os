@@ -2,7 +2,7 @@
 
 ## Latest verified commit
 
-`5c78fcc`
+`92fe0a9`
 
 ## Required checks
 
