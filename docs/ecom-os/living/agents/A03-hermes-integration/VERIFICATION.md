@@ -29,7 +29,7 @@
 | Background run + reconcile | `BackgroundRunPort` over fake bridge + fake lease (`test_hermes_runs.py`) | fixture pass — idempotent (1 run/job), lease-loss polls status, dropped stream recovered | real API-server run transport + A02 jobs pending |
 | Native channel/cron delivery | `ChannelDeliveryService` + fakes (`test_hermes_channels.py`) | fixture pass — delivers once, repeat→duplicate, failure retryable, unmapped→no identity, cron ref | real Hermes messaging/cron transport pending |
 | Degraded capability behavior | `run_conformance_suite` readiness gate (`test_hermes_conformance.py`) | fixture pass — missing mandatory→not_ready (only that feature), missing optional→degraded | gated `not_ready` on fixtures (I-19) until real probe |
-| Conformance evidence | `run_conformance_suite` → `ConformanceReport` (protocol+channel+gate) | fixture pass | real-Hermes run is the production gate (A03-R02) |
+| Conformance evidence + release gate | `uv run python -m app.hermes.conformance_cli` (`test_conformance_gate.py`, 7) | **exit 2 BLOCKED** on fixture — protocol checks pass but gate stays RED; no fixture can turn it green | real-Hermes run is the production gate; same command yields real evidence when IR-A03-05 lands |
 | Security/invariant checks | catalog rejects read-with-write-verb + unbound write; `validate_invocation` fails stale hash/version before execution; `redact` masks sensitive fields; `test_mcp_server.py` asserts no refund/cancel tool | pass | within the 109 above |
 
 ## Environment notes (for reproducibility)

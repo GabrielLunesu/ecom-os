@@ -80,6 +80,10 @@ Ordered, each behind typed ports + fakes + conformance fixtures (no real Hermes 
 8. [x] **Transport boundary + system-health (DR-A03-01 owner decision)** —
    `HermesNativeTransport` (real-Hermes blocked stub), `OpenClawCompatTransport` (dev/compat,
    NOT Hermes), `hermes_health_snapshot`, catalog→MCP `build_catalog_server`.
+9. [x] **Conformance gate runner** — `app/hermes/conformance_cli.py` selects transport from
+   env, runs the suite, emits a JSON snapshot, and exits non-zero (RED) until a real Hermes
+   passes — fixtures/compat can never turn it green. `uv run python -m app.hermes.conformance_cli`
+   → exit 2 BLOCKED. `test_conformance_gate.py` (7). A09 mounts it as the release gate.
 
 ## Then — Slice 3 (Hermes bridge and main chat UI) — partly BLOCKED on real Hermes
 

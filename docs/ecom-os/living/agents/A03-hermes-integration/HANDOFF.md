@@ -35,11 +35,15 @@ IR-A03-01..03). Resume at WORKBOARD "Next" items 4–6.
 ```bash
 cd backend
 uv sync --extra dev
-uv run python -m pytest <targeted tests> -q   # NOT `uv run pytest`
+uv run python -m pytest <targeted tests> -q          # NOT `uv run pytest`
+uv run python -m app.hermes.conformance_cli          # conformance gate (exit 2 = BLOCKED)
 ```
 
-Hermes transport is unconfigured locally (`HERMES_GATEWAY_URL` unset → `/delegate` spike
-falls back to direct Anthropic). Slice 0 work is fixture-driven until a pinned Hermes exists.
+The conformance gate is the single command that flips from BLOCKED to real evidence. To
+unblock against a real Hermes (IR-A03-05), set `HERMES_NATIVE_ENDPOINT` (+ token handle) and
+implement `HermesNativeTransport`'s protocol; for local dev set `HERMES_OPENCLAW_COMPAT_URL`
+to use the OpenClaw compat transport. No pinned Hermes exists in this env, so all v2 work is
+fixture/compat-driven and every feature stays `not_ready` (I-19).
 
 ## Do not accidentally regress
 
